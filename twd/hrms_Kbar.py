@@ -19,7 +19,7 @@ from dateutil.relativedelta import relativedelta
 from netCDF4 import Dataset
 from pylab import *
 from matplotlib import pyplot as plt
-import cmocean
+#import cmocean
 import numpy as np
 import math
 import sys
@@ -29,7 +29,7 @@ import os
 
 workdir=str(sys.argv[1]) # Work directory
 bathy_infile=str(sys.argv[2]) # Name of the bathymetry file (includes original bathy field and roughness field)
-fs=workdir+'/'+bathy_infile
+fn=workdir+'/'+bathy_infile
 
 outfile=str(sys.argv[3]) # Output file name
 
@@ -124,18 +124,19 @@ msk   = np.ones(shape=(NY,NX))
 msk[bathy>=0.] = 0.
 TM2 = 12.42 # hours, M2 tidal period
 rad = np.pi / 180.0  # conversion from degree into radians
-latM2 =  np.arcsin(24/(2*TM2)) / rad
-jjmin = find_nearest(lat,-latM2) - 5
-jjmax = find_nearest(lat, latM2) + 5
-DOMX = [0    , 2700, 5400, 10800, 16200, NX-1]
-DOMY = [jjmin, 3900, 6900 , jjmax]
+#latM2 =  np.arcsin(24/(2*TM2)) / rad
+#jjmin = find_nearest(lat,-latM2) - 5
+#jjmax = find_nearest(lat, latM2) + 5
+#DOMX = [0    , 2700, 5400, 10800, 16200, NX-1]
+#DOMY = [jjmin, 3900, 6900 , jjmax]
 
 # MAIN CALC
 print ('Start computation :')
-print ('compute running mean over 5x5deg boxes with steps of 1 grid point ...')
+print ('Compute running mean over 5x5deg boxes with steps of 1 grid point ...')
 start = time.time()
 
-for ji in range(DOMX[bx],DOMX[bx+1]) :
+#for ji in range(DOMX[bx],DOMX[bx+1]) :
+for ji in range(0,NX) :
    # define different x-position ranges to compose boxes near periodic boundaries
    [left_reg,centre_reg,right_reg] = [False, False, False]
    if ji<mid :
@@ -149,7 +150,8 @@ for ji in range(DOMX[bx],DOMX[bx+1]) :
       [xa,xb]    = [ji-mid, ji-(NX-mid-1)]
 
    # compute only lats with f<M2freq (higher are not used in wave drag parametrization)
-   for jj in range(DOMY[by],DOMY[by+1]) :
+   #for jj in range(DOMY[by],DOMY[by+1]) :
+   for jj in range(0,NY) :
       # all points near south and north boundaries will be equal to their interior neighbours
       [ya,yb] = [jj-mid, jj+mid] 
 
