@@ -49,7 +49,8 @@ cdo timmean catted.nc mean_bn2.nc
 
 # Comute the rmsq
 echo "Compute the sqrt"
-EXPR_STRING="\'${OUTFIELD}=sqrt(${FIELD_NAME})\'"
+EXPR_STRING="${OUTFIELD}=sqrt(${FIELD_NAME})"
+echo "$EXPR_STRING"
 cdo expr,$EXPR_STRING mean_bn2.nc ${OUTFILE}
 
 echo "Do some cleaning of intermediate files.."
