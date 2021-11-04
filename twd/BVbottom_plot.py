@@ -12,7 +12,7 @@ from netCDF4 import Dataset
 from pylab import *
 from matplotlib import pyplot as plt
 import matplotlib.colors as colors
-import cmocean
+#import cmocean
 import numpy as np
 import sys
 import os
@@ -23,10 +23,10 @@ workdir=str(sys.argv[1])   # Work directory
 eas_bathy=str(sys.argv[2]) # Path/Name of the EAS system bathymetry file
 eas_mesh=str(sys.argv[3])  # Path/Name of the EAS system mesh mask file
 
-infile=str(sys.argv[4])    # Input file name
+infile=workdir+'/'+str(sys.argv[4])    # Input file name
 infield=str(sys.argv[5])   # Name of the mean BV field in the input file  
 
-outfile=str(sys.argv[6])   # Output file name
+outfile=workdir+'/'+str(sys.argv[6])   # Output file name
 outfield=str(sys.argv[7])   # Name of the bottom mean BV field in the ouput file  
 
 eas_mbathy=str(sys.argv[8])        # eas mbathy field name in the mesh mask file
@@ -39,7 +39,7 @@ eas_Bathymetry=str(sys.argv[12])    # eas Bathymetry field name in the bathy fil
 # --- SET PARAMETERS
 
 # set FIGURE info
-figdir  = './plots/'
+figdir  = workdir+'/plots/'
 if not(os.path.isdir(figdir)) :
    print('Creating: [%s]' %figdir)
    os.makedirs(figdir)
@@ -77,8 +77,8 @@ if flag_calc_bnbot :
    # read mean bn from input file
    # note : bn is on w-points, so the corresponding mask is Wmask equalt to Tmask
    fn = infile
-   print ("Reading: [%s]" %fn)
-   fnc = Dataset(fn,mode='r')
+   print ("Reading: ",fn)
+   fnc = Dataset(infile,mode='r')
    bn = fnc.variables[infield][:]  ; bn = np.squeeze(bn)
    #
    # extract bn at the bottom
@@ -150,24 +150,30 @@ if flag_plot_shap :
    nav_lon[nav_lon==0]=np.nan
    # Mask variables
    nav_lat = np.ma.masked_invalid(nav_lat)
+   lat_min=30 #np.min(nav_lat[:,0])
+   lat_max=46 #np.max(nav_lat[:,0])
+   lon_min=-18 #np.min(nav_lon[0,:])
+   lon_max=38 #np.max(nav_lon[0,:])
    nav_lon = np.ma.masked_invalid(nav_lon)
    
    # --- PLOT
    VAR = bnbot
    VARunit = r'[$s^{-1}$]'
    VAR = np.ma.masked_invalid(VAR)
-   
+   print ('Prova ',VAR)
+   print ('Prova ',bnbot)
    k = 0 #for k,reg_n in enumerate(region):
    figname = figdir +'map_bottomBV.png'
    figtitle = r'$N_{bottom}$'
    cmap        = cm.get_cmap('bone_r') # Colormap
    cmap        = cm.get_cmap('twilight') # Colormap
-   [cmin,cmax] = [1.e-4,VAR.max()]            # color min and max values
-#   [cmin,cmax] = [1.e-8,VAR.max()]            # color min and max values
+   #[cmin,cmax] = [1.e-4,VAR.max()]            # color min and max values
+   #[cmin,cmax] = [1.e-8,VAR.max()]            # color min and max values
+   [cmin,cmax] = [VAR.min(),VAR.max()]
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
-   m = Basemap(projection='mill',llcrnrlat=lat_bnd[k,0],urcrnrlat=lat_bnd[k,1],llcrnrlon=lon_bnd[k,0],urcrnrlon=lon_bnd[k,1],resolution='i')
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
    #if k!=0 :
    #   m.drawparallels(np.arange(-18,36,10),labels=[1,0,0,0], fontsize=12, linewidth=0.3)
    #   m.drawmeridians(np.arange(-18,36,10),labels=[0,0,0,1], fontsize=12, linewidth=0.3)
