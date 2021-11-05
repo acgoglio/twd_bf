@@ -134,7 +134,7 @@ start = time.time()
 
 #for ji in range(DOMX[bx],DOMX[bx+1]) :
 for ji in range(0,NX) :
-   print ('Running index: 'ji)
+   print ('Running index: ',ji)
    # define different x-position ranges to compose boxes near periodic boundaries
    [left_reg,centre_reg,right_reg] = [False, False, False]
    if ji<mid :
@@ -150,7 +150,7 @@ for ji in range(0,NX) :
    # compute only lats with f<M2freq (higher are not used in wave drag parametrization)
    #for jj in range(DOMY[by],DOMY[by+1]) :
    for jj in range(0,NY) :
-      print ('Running indexes: 'ji,jj)
+      print ('Running indexes: ',ji,jj)
       # all points near south and north boundaries will be equal to their interior neighbours
       [ya,yb] = [jj-mid, jj+mid] 
 
