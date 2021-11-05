@@ -1,6 +1,6 @@
 '''
 Written by Federica Borile , Apr 2021
-Modified by AC Goglio , Oct 2021
+Modified by AC Goglio , Nov 2021
 '''
 
 print ("\n $$$--- CALC and SAVE h_rms and Kbar interpolated from GEBCO bathymetry to MED grid ---$$$ ")
@@ -31,7 +31,7 @@ workdir=str(sys.argv[1]) # Work directory
 bathy_infile=str(sys.argv[2]) # Name of the bathymetry file (includes original bathy field and roughness field)
 fn=workdir+'/'+bathy_infile
 
-outfile=str(sys.argv[3]) # Output file name
+outfile=workdir+'/'+str(sys.argv[3]) # Output file name
 
 bathy_inname=str(sys.argv[4]) # original bathymetry field name in the input file
 bathy_rough=str(sys.argv[5]) # roughness field name in the input/output file
@@ -129,6 +129,8 @@ rad = np.pi / 180.0  # conversion from degree into radians
 #jjmax = find_nearest(lat, latM2) + 5
 #DOMX = [0    , 2700, 5400, 10800, 16200, NX-1]
 #DOMY = [jjmin, 3900, 6900 , jjmax]
+DOMX = [0,961,NX-1]
+DOMY = [0,1680,3360,5040,NY-1]
 
 # MAIN CALC
 print ('Start computation :')
@@ -152,6 +154,7 @@ for ji in range(0,NX) :
    # compute only lats with f<M2freq (higher are not used in wave drag parametrization)
    #for jj in range(DOMY[by],DOMY[by+1]) :
    for jj in range(0,NY) :
+      print ('Running indexes: 'ji,jj)
       # all points near south and north boundaries will be equal to their interior neighbours
       [ya,yb] = [jj-mid, jj+mid] 
 

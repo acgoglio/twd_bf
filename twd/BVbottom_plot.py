@@ -35,6 +35,10 @@ eas_lat=str(sys.argv[10])           # eas lat field name in the mesh mask file
 eas_lon=str(sys.argv[11])           # eas lon field name in the mesh mask file
 eas_Bathymetry=str(sys.argv[12])    # eas Bathymetry field name in the bathy file
 
+order=int(sys.argv[13]) # Order of the Shapiro filter
+napp=int(sys.argv[14]) # Number of Shapiro filter applications
+scheme=int(sys.argv[15]) # type of boundary scheme to use ( only option 1 implemented = No change at wall, constant order )  
+
 
 # --- SET PARAMETERS
 
@@ -90,6 +94,96 @@ if flag_calc_bnbot :
          if bmk>=0 :
             bnb[j,i] = bn[bmk,j,i]
 
+# --------- define the Shapiro filter function
+# 1D Shapiro filter function
+# SHAPIRO 1D Function
+def shapiro1D(Finp,order,scheme):
+
+     Finp=np.array(Finp)
+     order=np.array(order)
+     scheme=np.array(scheme)
+
+     ###########
+     fourk=[2.500000E-1,6.250000E-2,1.562500E-2,3.906250E-3,9.765625E-4,2.44140625E-4,6.103515625E-5,1.5258789063E-5,3.814697E-6,9.536743E-7,2.384186E-7,5.960464E-8,1.490116E-8,3.725290E-9,9.313226E-10,2.328306E-10,5.820766E-11,1.455192E-11,3.637979E-12,9.094947E-13]
+
+     Im1D=len(Finp)
+     order2=int(np.fix(order/2))
+
+     cor=[0 for i in range(Im1D)]
+     Fcor=[0 for i in range(Im1D)]
+
+     #----------------------------------------------------------------------------
+     # Compute filter correction.
+     #----------------------------------------------------------------------------
+
+     if (scheme == 1):
+        # Scheme 1:  constant order and no change at wall.
+
+        # Filter loop
+       for n in range (1,order2+1):
+
+         # Set the bdy
+         if (n != order2):
+           cor[0]=2.0*(Finp[0]-Finp[1])
+           cor[Im1D-1]=2.0*(Finp[Im1D-1]-Finp[Im1D-2])
+         else:
+           cor[0]=0.0
+           cor[Im1D-1]=0.0
+
+         # Set all the other
+         cor[1:Im1D-2]=2.0*Finp[1:Im1D-2] - Finp[0:Im1D-3] - Finp[2:Im1D-1]
+
+       coeff_to_apply=float(fourk[order2-1])
+       #print ('Shapiro coeff. ',coeff_to_apply)
+       Fcor=np.array(cor)*coeff_to_apply
+
+     else:
+       print ('Not yet implemented..')
+
+     #----------------------------------------------------------------------------
+     # Apply correction.
+     #----------------------------------------------------------------------------
+
+     Fout=Finp-Fcor
+
+     return Fout
+
+# --------- apply the filtering to bnbot field
+# 2D Filtering of the field
+F=bnb
+Fout=F
+Im=NX
+Jm=NY
+print ('Grid dims are: (lon,lat)= ',Im,Jm)
+for n in range (1,napp+1):
+   print(n,'^ application of the Shapiro filter ongoing..')
+
+   # ----------------------------------------------------------------------------
+   #  Filter all rows.
+   # ----------------------------------------------------------------------------
+   print ('I am going to filter the rows..')
+   for j in range (0,Im):
+       #print ('Filtering row num: ',j)
+       Fraw=np.squeeze(F[:,j])
+       # Run Shapiro 1D
+       Fwrk=shapiro1D(Fraw,order,scheme)
+       Fout[:,j]=Fwrk
+       #print ('row Done!')
+
+   # ----------------------------------------------------------------------------
+   #  Filter all columns.
+   # ----------------------------------------------------------------------------
+   print ('I am going to filter the columns..')
+   for i in range (0,Jm):
+       #print ('Filtering col num: ',i)
+       Fraw=np.squeeze(Fout[i,:])
+       # Run Shapiro 1D
+       Fwrk=shapiro1D(Fraw,order,scheme)
+       Fout[i,:]=Fwrk
+       #print ('row Done!')
+
+   F=Fout
+   bnb=F
 
 # --------- save "bnb" in netCDF file
 if flag_save_bnbot :
