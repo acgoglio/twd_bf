@@ -4,11 +4,6 @@ Modified by AC Goglio , Nov 2021
 '''
 
 print ("\n $$$--- CALC and SAVE h_rms and Kbar interpolated from GEBCO bathymetry to MED grid ---$$$ ")
-print ("\n $$$--- PART 2/3 : compute h_rms and K_bar in the GEBCO grid at each point")
-# the idea is to work as follow:
-# 1) compute roughness as GEBCO_bathymetry - its filtered form (Shapiro Niter) --> MATLAB code
-# 2) compute h_rms and K_bar in the GEBCO grid --> this PYTHON code
-# 3) regrid on ORCA025 grid --> another PYTHON code
 
 ###############
 import datetime
@@ -111,7 +106,7 @@ e2t = find_point_distance(nav_lon[0:-1,:],nav_lat[0:-1,:],nav_lon[1:,:],nav_lat[
 e1t = np.append(e1t,np.atleast_2d(e1t[:,-1]).T,axis=1)
 e2t = np.append(e2t,np.atleast_2d(e2t[-1,:]),  axis=0)
 area_cell = e1t * e2t
-print ('... mesh created.')
+print ('... mesh created.', NY,NX)
 
 #    CALC : as Shakespeare et al (2020) 
 # ----------
@@ -139,6 +134,7 @@ start = time.time()
 
 #for ji in range(DOMX[bx],DOMX[bx+1]) :
 for ji in range(0,NX) :
+   print ('Running index: 'ji)
    # define different x-position ranges to compose boxes near periodic boundaries
    [left_reg,centre_reg,right_reg] = [False, False, False]
    if ji<mid :
