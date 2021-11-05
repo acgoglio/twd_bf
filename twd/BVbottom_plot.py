@@ -58,7 +58,7 @@ filemesh = eas_mesh
 print ("Reading: [%s]" %filemesh)
 mesh = Dataset(filemesh,mode='r')
 nav_lat = mesh.variables[eas_lat][:]   ; nav_lat = np.squeeze(nav_lat)        # Y-axis
-nav_lon = mesh.variables[eas_lat][:]   ; nav_lon = np.squeeze(nav_lon)        # X-axis
+nav_lon = mesh.variables[eas_lon][:]   ; nav_lon = np.squeeze(nav_lon)        # X-axis
 mbathy  = mesh.variables[eas_mbathy][:]    ; mbathy  = np.squeeze(mbathy)
 tmask   = mesh.variables[eas_tmask][:]     ; tmask   = np.squeeze(tmask)
 mesh.close()
@@ -82,7 +82,7 @@ if flag_calc_bnbot :
    bn = fnc.variables[infield][:]  ; bn = np.squeeze(bn)
    #
    # extract bn at the bottom
-   #bn = bn*tmask
+   bn = bn*tmask
    bnb = np.empty([NY,NX])
    for i in range(NX) :
       for j in range(NY) :
@@ -150,18 +150,18 @@ if flag_plot_shap :
    nav_lon[nav_lon==0]=np.nan
    # Mask variables
    nav_lat = np.ma.masked_invalid(nav_lat)
-   lat_min=30 #np.min(nav_lat[:,0])
-   lat_max=46 #np.max(nav_lat[:,0])
-   lon_min=-18 #np.min(nav_lon[0,:])
-   lon_max=38 #np.max(nav_lon[0,:])
+   lat_min=np.min(nav_lat[:,0])
+   lat_max=np.max(nav_lat[:,0])
+   lon_min=np.min(nav_lon[0,:])
+   lon_max=np.max(nav_lon[0,:])
    nav_lon = np.ma.masked_invalid(nav_lon)
    
    # --- PLOT
    VAR = bnbot
    VARunit = r'[$s^{-1}$]'
    VAR = np.ma.masked_invalid(VAR)
-   print ('Prova ',VAR)
-   print ('Prova ',bnbot)
+   VAR=VAR*tmask[0,:,:]
+
    k = 0 #for k,reg_n in enumerate(region):
    figname = figdir +'map_bottomBV.png'
    figtitle = r'$N_{bottom}$'
@@ -169,7 +169,7 @@ if flag_plot_shap :
    cmap        = cm.get_cmap('twilight') # Colormap
    #[cmin,cmax] = [1.e-4,VAR.max()]            # color min and max values
    #[cmin,cmax] = [1.e-8,VAR.max()]            # color min and max values
-   [cmin,cmax] = [VAR.min(),VAR.max()]
+   [cmin,cmax] = [1.e-5,1.e+0]
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
@@ -183,7 +183,7 @@ if flag_plot_shap :
    m.fillcontinents(color='0.8',lake_color='0.9')
    m.drawcoastlines(color='dimgray', linewidth=0.3)
    plt.title( figtitle, fontsize='18')
-   cbar = m.colorbar(fig,'right', size='3%', pad='2%', extend='max')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='max')
    cbar.set_label(VARunit,fontsize='14')
    cbar.ax.tick_params(labelsize='12')
    
