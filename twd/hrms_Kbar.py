@@ -33,6 +33,8 @@ bathy_rough=str(sys.argv[5]) # roughness field name in the input/output file
 bathy_inlat=str(sys.argv[6]) # lat field name in the input/output file
 bathy_inlon=str(sys.argv[7]) # lon field name in the input/output file
 
+sub_by=int(sys.argv[8]) # Subdomain y index
+sub_bx=int(sys.argv[9]) # Subdomain x index
 
 # --- SET PARAMETERS
 
@@ -49,11 +51,11 @@ boxdim    = 5   # deg
 # set SUBDOMAINS info
 # bx: 0,1,2
 # by: 0,1,2,3
-[by,bx] = [0,0]
+[by,bx] = [sub_by,0]
 
 # set FLAG
-flag_hrms_plot = True
-flag_Kbar_plot = True
+flag_hrms_plot = False
+flag_Kbar_plot = False
 flag_vars_save = True
 
 
@@ -132,8 +134,8 @@ print ('Start computation :')
 print ('Compute running mean over 5x5deg boxes with steps of 1 grid point ...')
 start = time.time()
 
-#for ji in range(DOMX[bx],DOMX[bx+1]) :
-for ji in range(0,NX) :
+for ji in range(DOMX[bx],DOMX[bx+1]) :
+#for ji in range(0,NX) :
    print ('Running index: ',ji)
    # define different x-position ranges to compose boxes near periodic boundaries
    [left_reg,centre_reg,right_reg] = [False, False, False]
@@ -148,8 +150,8 @@ for ji in range(0,NX) :
       [xa,xb]    = [ji-mid, ji-(NX-mid-1)]
 
    # compute only lats with f<M2freq (higher are not used in wave drag parametrization)
-   #for jj in range(DOMY[by],DOMY[by+1]) :
-   for jj in range(0,NY) :
+   for jj in range(DOMY[by],DOMY[by+1]) :
+   #for jj in range(0,NY) :
       print ('Running indexes: ',ji,jj)
       # all points near south and north boundaries will be equal to their interior neighbours
       [ya,yb] = [jj-mid, jj+mid] 
