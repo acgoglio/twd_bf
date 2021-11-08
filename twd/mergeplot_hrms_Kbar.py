@@ -185,12 +185,9 @@ if flag_hrms_plot :
    VARunit = '[m]'   
    VAR = np.ma.masked_invalid(VAR)
 
-   k = 0 #for k,reg_n in enumerate(region):
-   reg_n = 'global'
-   print('\nRegion: ' + reg_n +'\n')
-   figname = figdir +'map_hrms_gebco1_runbox'+str(boxdim)+'_step025_fft'
+   k = 0
+   figname = figdir +'map_hrms.png'
    figtitle = r'$h_{rms} = \sqrt{\frac{1}{4A\pi^2} \int\int |\hat{h}|^2 dk dl}$'
-   figname = figname +'_'+ reg_n +'.png'
    cmap        = plt.cm.gist_heat_r # Colormap
    [cmin,cmax] = [0,600]            # color min and max values
       
@@ -198,15 +195,14 @@ if flag_hrms_plot :
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
    m = Basemap(projection='mill',llcrnrlat=lat_bnd[k,0],urcrnrlat=lat_bnd[k,1],llcrnrlon=lon_bnd[k,0],urcrnrlon=lon_bnd[k,1],resolution='i')
-   #      m.drawparallels(np.arange(-90,90,20),labels=[1,0,0,0], fontsize=12, linewidth=0.0)
-   #      m.drawmeridians(np.arange(-180,180,60),labels=[0,0,0,1], fontsize=12, linewidth=0.0)
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
    fig = m.pcolor(x,y,VAR, cmap=cmap, vmin=cmin, vmax=cmax)
-   pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
-   m.fillcontinents(color='0.8',lake_color='0.9')
-   m.drawcoastlines(color='dimgray', linewidth=0.3)
+   pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
+   pc    = plt.contour(x,y,bathy, levels=[15.0], colors='black',linewidth=0.3) # tmask[0,:,:]
    plt.title( figtitle, fontsize='18')
-   cbar = m.colorbar(fig,'right', size='3%', pad='2%', extend='max')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
    cbar.set_label(VARunit,fontsize='14')
    cbar.ax.tick_params(labelsize='12')
    
@@ -232,15 +228,14 @@ if flag_Kbar_plot :
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
    m = Basemap(projection='mill',llcrnrlat=lat_bnd[k,0],urcrnrlat=lat_bnd[k,1],llcrnrlon=lon_bnd[k,0],urcrnrlon=lon_bnd[k,1],resolution='i')
-   #      m.drawparallels(np.arange(-90,90,20),labels=[1,0,0,0], fontsize=12, linewidth=0.0)
-   #      m.drawmeridians(np.arange(-180,180,60),labels=[0,0,0,1], fontsize=12, linewidth=0.0)
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
    fig = m.pcolor(x,y,VAR, cmap=cmap, vmin=cmin, vmax=cmax)
-   pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
-   m.fillcontinents(color='0.8',lake_color='0.9')
-   m.drawcoastlines(color='dimgray', linewidth=0.3)
+   pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
+   pc    = plt.contour(x,y,bathy, levels=[15.0], colors='black',linewidth=0.3) # tmask[0,:,:]
    plt.title( figtitle, fontsize='18')
-   cbar = m.colorbar(fig,'right', size='3%', pad='2%', extend='max') #, format='%.0e')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
    cbar.set_label(VARunit,fontsize='14')
    cbar.ax.tick_params(labelsize='12')
    cbar.formatter.set_powerlimits((0, 0))
@@ -248,9 +243,4 @@ if flag_Kbar_plot :
    print ('Saving: [%s]' % figname)
    plt.savefig(figname, dpi=500, bbox_inches='tight')
    plt.close('all')
-
-
-
-#
-## --- END
 #
