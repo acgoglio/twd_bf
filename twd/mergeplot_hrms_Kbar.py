@@ -30,11 +30,16 @@ outfile=workdir+'/'+str(sys.argv[3]) # Output file name
 
 bathy_inname=str(sys.argv[4]) # original bathymetry field name in the input file
 bathy_rough=str(sys.argv[5]) # roughness field name in the input/output file
-bathy_inlat=str(sys.argv[6]) # lat field name in the input/output file
-bathy_inlon=str(sys.argv[7]) # lon field name in the input/output file
+bathy_inlat=str(sys.argv[6]) # lat field name in the input file
+bathy_inlon=str(sys.argv[7]) # lon field name in the input file
 
 sub_bx_num=int(sys.argv[8]) # Num of Subdomains in x 
 sub_by_num=int(sys.argv[9]) # Num of Subdomains in y
+
+out_hrms_name=str(sys.argv[10]) # hrms field name in outfile
+out_kbar_name=str(sys.argv[11]) # kbar field name in outfile
+out_lat_name=bathy_inlat  # lat field name in outfile
+out_lon_name=bathy_inlon  # lon field name in outfile
 
 # --- SET PARAMETERS
 
@@ -125,13 +130,13 @@ if flag_vars_save :
    nco.createDimension('y', NY)
    nco.createDimension('x', NX)
    # create latitude axis
-   latout = nco.createVariable('lat', dtype('double').char, 'y')
+   latout = nco.createVariable(out_lat_name, dtype('double').char, 'y')
    latout.standard_name = 'latitude'
    latout.long_name = 'latitude'
    latout.units = 'degrees_north'
    latout.axis = 'Y'
    # create longitude axis
-   lonout = nco.createVariable('lon', dtype('double').char, 'x')
+   lonout = nco.createVariable(out_lon_name, dtype('double').char, 'x')
    lonout.standard_name = 'longitude'
    lonout.long_name = 'longitude'
    lonout.units = 'degrees_east'
@@ -140,12 +145,12 @@ if flag_vars_save :
    lonout[:] = lon[:]
    latout[:] = lat[:]
    # create variable array : var1
-   out_var1 = nco.createVariable('h_rms', dtype('double').char, ('y','x'))
+   out_var1 = nco.createVariable(out_hrms_name, dtype('double').char, ('y','x'))
    out_var1.long_name   = 'root mean square topograpthic height (roughness)'
    out_var1.description = 'h_rms = \sqrt( \int |FFT(roughness)|^2 dk dl / (4*pi^2*A) )'
    out_var1.units       = 'm'
    # create variable array : var2
-   out_var2 = nco.createVariable('K_bar', dtype('double').char, ('y','x'))
+   out_var2 = nco.createVariable(out_kbar_name, dtype('double').char, ('y','x'))
    out_var2.long_name   = 'height-weightened-mean wavenumber of topograpthic height (roughness)'
    out_var2.description = 'K_bar =  \int (k^2+l^2)*|FFT(roughness)|^2 dk dl / (h_rms^2*4*pi^2*A)'
    out_var2.units       = 'm-1'
@@ -164,13 +169,13 @@ if flag_vars_save :
 #   |    make the plot    |
 #   -----------------------
 
-# Area
-# Mask invalid values
-nav_lon[nav_lon==0]=np.nan
-#VAR[VAR==0]=np.nan
-# Mask variables
-nav_lat = np.ma.masked_invalid(nav_lat)
-nav_lon = np.ma.masked_invalid(nav_lon)
+## Area
+## Mask invalid values
+#nav_lon[nav_lon==0]=np.nan
+##VAR[VAR==0]=np.nan
+## Mask variables
+#nav_lat = np.ma.masked_invalid(nav_lat)
+#nav_lon = np.ma.masked_invalid(nav_lon)
 
 
    # --- PLOT
