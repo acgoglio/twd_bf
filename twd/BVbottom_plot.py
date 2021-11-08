@@ -87,12 +87,66 @@ if flag_calc_bnbot :
    #
    # extract bn at the bottom
    bn = bn*tmask
+   #bn=ma.masked_array(bn,mask = tmask,fill_value=np.nan)
    bnb = np.empty([NY,NX])
    for i in range(NX) :
       for j in range(NY) :
          bmk = mbathy[j,i]-1
+         #print ('bmk',bmk)
          if bmk>=0 :
             bnb[j,i] = bn[bmk,j,i]
+         else: 
+            #print ('mbathy[j,i]',mbathy[j,i])
+            bnb[j,i] = -1 #np.nan
+
+
+# --------- Apply SeaOver Land before smoothing
+   # Sea over land
+   threshbnb = -1
+   maskbnb = bnb == threshbnb
+   fieldbnb_ma = np.ma.masked_where(maskbnb,bnb)
+   input_matrix=fieldbnb_ma
+   nloop=napp
+   infill_value = input_matrix.fill_value
+   output_matrix = ma.copy(input_matrix)  # using ma.copy to prevent future field modifications
+   if np.sum(output_matrix.mask) == 0:  # nothing to fill
+      print('WARNING. Field does not have any land points or wrong field type. Exiting.', file=sys.stderr)
+   else:
+      # iterations loop
+      for loop in range(nloop):
+         # Create a nD x 8 matrix in which, last dimension fixed, the other dimensions
+         #  contains values that are shifted in one of the 8 possible directions
+         # of the last two axes compared to the original matrix
+         shift_matrix = ma.array(np.empty(shape=((8,) + output_matrix.shape)),
+                                 mask=True, fill_value=infill_value, dtype=float)
+         # up shift
+         shift_matrix[0, ..., : -1,:] = output_matrix[..., 1:,:]
+         # down shift
+         shift_matrix[1, ..., 1:, :] = output_matrix[..., : -1, :]
+         # left shift
+         shift_matrix[2, ..., :, : -1] = output_matrix[..., :, 1:]
+         # right shift
+         shift_matrix[3, ..., :, 1:] = output_matrix[..., :, : -1]
+         # up-left shift
+         shift_matrix[4, ..., : -1, : -1] = output_matrix[..., 1:, 1:]
+         # up-right shift
+         shift_matrix[5, ..., : -1, 1:] = output_matrix[..., 1:, : -1]
+         # down-left shift
+         shift_matrix[6, ..., 1:, : -1] = output_matrix[..., : -1, 1:]
+         # down-right shift
+         shift_matrix[7, ..., 1:, 1:] = output_matrix[..., : -1, : -1]
+         # Mediate the shift matrix among the third dimension
+         mean_matrix = ma.mean(shift_matrix, 0)
+         # Replace input masked points with new ones belonging to the mean matrix
+         output_matrix = ma.array(np.where(mean_matrix.mask + output_matrix.mask, mean_matrix, output_matrix),
+                                  mask=mean_matrix.mask, fill_value=infill_value, dtype=float)
+         output_matrix = ma.masked_where(mean_matrix.mask, output_matrix)
+         if np.sum(output_matrix.mask) == 0:  # nothing more to flood
+             print('WARNING. Field does not have anymore land points,', str(loop + 1),
+                   'steps were sufficient to flood it completely.', file=sys.stderr)
+             break
+   bnb=output_matrix
+
 
 # --------- define the Shapiro filter function
 # 1D Shapiro filter function
@@ -268,16 +322,17 @@ if flag_plot_shap :
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
    m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
-   #if k!=0 :
-   #   m.drawparallels(np.arange(-18,36,10),labels=[1,0,0,0], fontsize=12, linewidth=0.3)
-   #   m.drawmeridians(np.arange(-18,36,10),labels=[0,0,0,1], fontsize=12, linewidth=0.3)
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3) 
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
    fig = m.pcolor(x,y,VAR, cmap=cmap, norm=colors.LogNorm(vmin=cmin, vmax=cmax) )
-   pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
-   m.fillcontinents(color='0.8',lake_color='0.9')
-   m.drawcoastlines(color='dimgray', linewidth=0.3)
+   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
+   #m.fillcontinents(color='0.8',lake_color='0.9')
+   #m.drawcoastlines(color='dimgray', linewidth=0.3)
+   pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
+   pc    = plt.contour(x,y,bathy, levels=[15.0], colors='black',linewidth=0.3) # tmask[0,:,:]
    plt.title( figtitle, fontsize='18')
-   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='max')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
    cbar.set_label(VARunit,fontsize='14')
    cbar.ax.tick_params(labelsize='12')
    
