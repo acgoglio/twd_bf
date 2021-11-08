@@ -117,7 +117,7 @@ TM2 = 12.42 # hours, M2 tidal period
 rad = np.pi / 180.0  # conversion from degree into radians
 
 # Med subdivision in 8 subdomains
-DOMX = [0,961,NX-1]
+DOMX = [0,480,961,NX-1]
 DOMY = [0,1680,3360,5040,NY-1]
 
 # MAIN CALC
@@ -202,10 +202,10 @@ end = time.time()
 print(end-start)
 
 # --- write NPY file
-temp_hrms_outfile = workdir+'/'+npy_hrms_pre+'dom'+str(by)+str(bx)+ #hrma_temp_
+temp_hrms_outfile = workdir+'/'+npy_hrms_pre+'dom'+str(by)+str(bx)
 print('Saving: [%s]' %(temp_hrms_outfile+'.npy'))
 np.save(temp_hrms_outfile,np.asarray(h_rms))
-temp_kbar_outfile = workdir+'/'+npy_kbar_pre+'dom'+str(by)+str(bx)+ #kbar_temp_
+temp_kbar_outfile = workdir+'/'+npy_kbar_pre+'dom'+str(by)+str(bx)
 print('Saving: [%s]' %(temp_kbar_outfile+'.npy'))
 np.save(temp_kbar_outfile,np.asarray(K_bar))
 
