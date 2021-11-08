@@ -169,23 +169,23 @@ if flag_vars_save :
 #   |    make the plot    |
 #   -----------------------
 
-## Area
-## Mask invalid values
-#nav_lon[nav_lon==0]=np.nan
-##VAR[VAR==0]=np.nan
-## Mask variables
-#nav_lat = np.ma.masked_invalid(nav_lat)
-#nav_lon = np.ma.masked_invalid(nav_lon)
-
-
-   # --- PLOT
-
 if flag_hrms_plot :
+
+   # Area
+   # Mask invalid values
+   nav_lon[nav_lon==0]=np.nan
+   # Mask variables
+   nav_lat = np.ma.masked_invalid(nav_lat)
+   lat_min=np.min(nav_lat[:,0])
+   lat_max=np.max(nav_lat[:,0])
+   lon_min=np.min(nav_lon[0,:])
+   lon_max=np.max(nav_lon[0,:])
+   nav_lon = np.ma.masked_invalid(nav_lon)
+
    VAR = h_rms
    VARunit = '[m]'   
    VAR = np.ma.masked_invalid(VAR)
 
-   k = 0
    figname = figdir +'map_hrms.png'
    figtitle = r'$h_{rms} = \sqrt{\frac{1}{4A\pi^2} \int\int |\hat{h}|^2 dk dl}$'
    cmap        = plt.cm.gist_heat_r # Colormap
@@ -194,7 +194,7 @@ if flag_hrms_plot :
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
-   m = Basemap(projection='mill',llcrnrlat=lat_bnd[k,0],urcrnrlat=lat_bnd[k,1],llcrnrlon=lon_bnd[k,0],urcrnrlon=lon_bnd[k,1],resolution='i')
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
@@ -215,9 +215,6 @@ if flag_Kbar_plot :
    VARunit = r'[$m^{-1}]'
    VAR = np.ma.masked_invalid(VAR)
 
-   k = 0 #for k,reg_n in enumerate(region):
-   reg_n = 'global'
-   print('\nRegion: ' + reg_n +'\n')
    figname = figdir +'map_Kbar_gebco1_runbox'+str(boxdim)+'_step025_fft'
    figtitle = r'$\overline{K} = \frac{1}{4A\pi^2h_{rms}^2} \int\int (k^2+l^2) |\hat{h}|^2 dk dl$'
    figname = figname +'_'+ reg_n +'.png'
@@ -227,7 +224,7 @@ if flag_Kbar_plot :
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
-   m = Basemap(projection='mill',llcrnrlat=lat_bnd[k,0],urcrnrlat=lat_bnd[k,1],llcrnrlon=lon_bnd[k,0],urcrnrlon=lon_bnd[k,1],resolution='i')
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
