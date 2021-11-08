@@ -98,7 +98,7 @@ jjmin = find_nearest(lat,-latM2) - 5
 jjmax = find_nearest(lat, latM2) + 5
 
 # Med subdivision in 8 subdomains
-DOMX = [0,961,NX-1]
+DOMX = [0,480,961,NX-1]
 DOMY = [0,1680,3360,5040,NY-1]
 
 # Merge subdomains
