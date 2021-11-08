@@ -3,7 +3,7 @@ Written by Federica Borile , Apr 2021
 Modified by AC Goglio , Nov 2021
 '''
 
-print ("\n $$$--- CALC and SAVE h_rms and Kbar interpolated from GEBCO bathymetry to MED grid ---$$$ ")
+print ("\n $$$--- CALC h_rms and Kbar interpolated from GEBCO bathymetry to MED grid ---$$$ ")
 
 ###############
 import datetime
@@ -26,15 +26,16 @@ workdir=str(sys.argv[1]) # Work directory
 bathy_infile=str(sys.argv[2]) # Name of the bathymetry file (includes original bathy field and roughness field)
 fn=workdir+'/'+bathy_infile
 
-outfile=workdir+'/'+str(sys.argv[3]) # Output file name
+npy_hrms_pre=str(sys.argv[3]) # npy hrms Output file prename
+npy_kbar_pre=str(sys.argv[4]) # npy kbar Output file prename
 
-bathy_inname=str(sys.argv[4]) # original bathymetry field name in the input file
-bathy_rough=str(sys.argv[5]) # roughness field name in the input/output file
-bathy_inlat=str(sys.argv[6]) # lat field name in the input/output file
-bathy_inlon=str(sys.argv[7]) # lon field name in the input/output file
+bathy_inname=str(sys.argv[5]) # original bathymetry field name in the input file
+bathy_rough=str(sys.argv[6]) # roughness field name in the input/output file
+bathy_inlat=str(sys.argv[7]) # lat field name in the input/output file
+bathy_inlon=str(sys.argv[8]) # lon field name in the input/output file
 
-sub_by=int(sys.argv[8]) # Subdomain y index
-sub_bx=int(sys.argv[9]) # Subdomain x index
+sub_by=int(sys.argv[9]) # Subdomain y index
+sub_bx=int(sys.argv[10]) # Subdomain x index
 
 # --- SET PARAMETERS
 
@@ -49,14 +50,7 @@ resol     = 120 # Npt/deg = 1'
 boxdim    = 5   # deg
 
 # set SUBDOMAINS info
-# bx: 0,1,2
-# by: 0,1,2,3
-[by,bx] = [sub_by,0]
-
-# set FLAG
-flag_hrms_plot = False
-flag_Kbar_plot = False
-flag_vars_save = True
+[by,bx] = [sub_by,sub_bx]
 
 
 #### ------- DO NOT CHANGE below this line ------- #####
@@ -121,11 +115,8 @@ msk   = np.ones(shape=(NY,NX))
 msk[bathy>=0.] = 0.
 TM2 = 12.42 # hours, M2 tidal period
 rad = np.pi / 180.0  # conversion from degree into radians
-#latM2 =  np.arcsin(24/(2*TM2)) / rad
-#jjmin = find_nearest(lat,-latM2) - 5
-#jjmax = find_nearest(lat, latM2) + 5
-#DOMX = [0    , 2700, 5400, 10800, 16200, NX-1]
-#DOMY = [jjmin, 3900, 6900 , jjmax]
+
+# Med subdivision in 8 subdomains
 DOMX = [0,961,NX-1]
 DOMY = [0,1680,3360,5040,NY-1]
 
@@ -135,8 +126,7 @@ print ('Compute running mean over 5x5deg boxes with steps of 1 grid point ...')
 start = time.time()
 
 for ji in range(DOMX[bx],DOMX[bx+1]) :
-#for ji in range(0,NX) :
-   print ('Running index: ',ji)
+   #print ('Running index: ',ji)
    # define different x-position ranges to compose boxes near periodic boundaries
    [left_reg,centre_reg,right_reg] = [False, False, False]
    if ji<mid :
@@ -151,8 +141,7 @@ for ji in range(DOMX[bx],DOMX[bx+1]) :
 
    # compute only lats with f<M2freq (higher are not used in wave drag parametrization)
    for jj in range(DOMY[by],DOMY[by+1]) :
-   #for jj in range(0,NY) :
-      print ('Running indexes: ',ji,jj)
+      #print ('Running indexes: ',ji,jj)
       # all points near south and north boundaries will be equal to their interior neighbours
       [ya,yb] = [jj-mid, jj+mid] 
 
@@ -212,27 +201,23 @@ print ('... computation done.')
 end = time.time()
 print(end-start)
 
-## apply mask to the final field (to be sure...)
-#h_rms = np.where(msk==1, h_rms, -9999)
-#K_bar = np.where(msk==1, K_bar, -9999)
-## copy the first column on the last position
-#h_rms[:,NX-1] = h_rms[:,0]
-#K_bar[:,NX-1] = K_bar[:,0]
-
 # --- write NPY file
-outfile = 'hrms_temp_dom'+str(by)+str(bx)+'a' 
-print('Saving: [%s]' %(outfile+'.npy'))
-np.save(outfile,np.asarray(h_rms))
-outfile = 'kbar_temp_dom'+str(by)+str(bx)+'a'
-print('Saving: [%s]' %(outfile+'.npy'))
-np.save(outfile,np.asarray(K_bar))
+temp_hrms_outfile = workdir+'/'+npy_hrms_pre+'dom'+str(by)+str(bx)+ #hrma_temp_
+print('Saving: [%s]' %(temp_hrms_outfile+'.npy'))
+np.save(temp_hrms_outfile,np.asarray(h_rms))
+temp_kbar_outfile = workdir+'/'+npy_kbar_pre+'dom'+str(by)+str(bx)+ #kbar_temp_
+print('Saving: [%s]' %(temp_kbar_outfile+'.npy'))
+np.save(temp_kbar_outfile,np.asarray(K_bar))
 
 
-#   ---------------------
-#   | write netCDF file |
+#   --------------------
+#   | write netCDF file | TO BE RM -> FOR DEVELOPMENT ONLY
 #   --------------------
 
-if flag_vars_save :
+if bx == 0 and by == 0 :
+   
+   outfile='temp_temp.nc'
+
    # open netCDF file to write
    nco  = Dataset(outfile,mode='w',format='NETCDF4')
 
@@ -275,94 +260,3 @@ if flag_vars_save :
    nco.close()
    print ("Saving: [%s]" %outfile)
 
-
-#   -----------------------
-#   |    make the plot    |
-#   -----------------------
-
-# Area
-# Mask invalid values
-nav_lon[nav_lon==0]=np.nan
-#VAR[VAR==0]=np.nan
-# Cut requested area
-nav_lat[np.logical_or(nav_lat < -89,nav_lat > 89)] = np.nan
-nav_lon[np.logical_or(nav_lon < -179,nav_lon > 179)] = np.nan
-# Mask variables
-nav_lat = np.ma.masked_invalid(nav_lat)
-nav_lon = np.ma.masked_invalid(nav_lon)
-
-
-   # --- PLOT
-
-if flag_hrms_plot :
-   VAR = h_rms
-   VARunit = '[m]'   
-   VAR = np.ma.masked_invalid(VAR)
-
-   reg_n = 'Med Sea'
-   print('\nRegion: ' + reg_n +'\n')
-   figname = figdir +'map_hrms_runbox'+str(boxdim)+'_fft'
-   figtitle = r'$h_{rms} = \sqrt{\frac{1}{4A\pi^2} \int\int |\hat{h}|^2 dk dl}$'
-   figname = figname +'_'+ reg_n +'.png'
-   cmap        = plt.cm.gist_heat_r # Colormap
-   [cmin,cmax] = [0,600]            # color min and max values
-      
-   print('... make the plot ...')
-   plt.figure()
-   plt.rcParams['lines.linewidth'] = 0.3
-   m = Basemap(projection='mill',llcrnrlat=lat_bnd[0],urcrnrlat=lat_bnd[1],llcrnrlon=lon_bnd[0],urcrnrlon=lon_bnd[1],resolution='i')
-   #      m.drawparallels(np.arange(-90,90,20),labels=[1,0,0,0], fontsize=12, linewidth=0.0)
-   #      m.drawmeridians(np.arange(-180,180,60),labels=[0,0,0,1], fontsize=12, linewidth=0.0)
-   x, y = m(nav_lon, nav_lat)
-   fig = m.pcolor(x,y,VAR, cmap=cmap, vmin=cmin, vmax=cmax)
-   pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
-   m.fillcontinents(color='0.8',lake_color='0.9')
-   m.drawcoastlines(color='dimgray', linewidth=0.3)
-   plt.title( figtitle, fontsize='18')
-   cbar = m.colorbar(fig,'right', size='3%', pad='2%', extend='max')
-   cbar.set_label(VARunit,fontsize='14')
-   cbar.ax.tick_params(labelsize='12')
-   
-   print ('Saving: [%s]' % figname)
-   plt.savefig(figname, dpi=500, bbox_inches='tight')
-   plt.close('all')
-
-if flag_Kbar_plot :
-   VAR = K_bar
-   VARunit = r'[$m^{-1}]'
-   VAR = np.ma.masked_invalid(VAR)
-
-   reg_n = 'Med Sea'
-   print('\nRegion: ' + reg_n +'\n')
-   figname = figdir +'map_Kbar_runbox'+str(boxdim)+'_fft'
-   figtitle = r'$\overline{K} = \frac{1}{4A\pi^2h_{rms}^2} \int\int (k^2+l^2) |\hat{h}|^2 dk dl$'
-   figname = figname +'_'+ reg_n +'.png'
-   cmap        = plt.cm.gist_heat_r   # Colormap
-   [cmin,cmax] = [0.,1.e-4]       # color min and max values
-
-   print('... make the plot ...')
-   plt.figure()
-   plt.rcParams['lines.linewidth'] = 0.3
-   m = Basemap(projection='mill',llcrnrlat=lat_bnd[0],urcrnrlat=lat_bnd[1],llcrnrlon=lon_bnd[0],urcrnrlon=lon_bnd[1],resolution='i')
-   #      m.drawparallels(np.arange(-90,90,20),labels=[1,0,0,0], fontsize=12, linewidth=0.0)
-   #      m.drawmeridians(np.arange(-180,180,60),labels=[0,0,0,1], fontsize=12, linewidth=0.0)
-   x, y = m(nav_lon, nav_lat)
-   fig = m.pcolor(x,y,VAR, cmap=cmap, vmin=cmin, vmax=cmax)
-   pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
-   m.fillcontinents(color='0.8',lake_color='0.9')
-   m.drawcoastlines(color='dimgray', linewidth=0.3)
-   plt.title( figtitle, fontsize='18')
-   cbar = m.colorbar(fig,'right', size='3%', pad='2%', extend='max') #, format='%.0e')
-   cbar.set_label(VARunit,fontsize='14')
-   cbar.ax.tick_params(labelsize='12')
-   cbar.formatter.set_powerlimits((0, 0))
-
-   print ('Saving: [%s]' % figname)
-   plt.savefig(figname, dpi=500, bbox_inches='tight')
-   plt.close('all')
-
-
-
-#
-## --- END
-#
