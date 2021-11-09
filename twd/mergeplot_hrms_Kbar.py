@@ -97,9 +97,9 @@ latM2 =  np.arcsin(24/(2*TM2)) / rad
 jjmin = find_nearest(lat,-latM2) - 5
 jjmax = find_nearest(lat, latM2) + 5
 
-# Med subdivision in 8 subdomains
-DOMX = [0,480,961,NX-1]
-DOMY = [0,1680,3360,5040,NY-1]
+# Med subdivision in 48 subdomains
+DOMY = [0,240,480,720,961,1200,NY-1]
+DOMX = [0,840,1680,2520,3360,4200,5040,5880,NX-1]
 
 # Merge subdomains
 for bx in range(0,sub_bx_num+1):

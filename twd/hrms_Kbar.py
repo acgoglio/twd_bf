@@ -34,8 +34,8 @@ bathy_rough=str(sys.argv[6]) # roughness field name in the input/output file
 bathy_inlat=str(sys.argv[7]) # lat field name in the input/output file
 bathy_inlon=str(sys.argv[8]) # lon field name in the input/output file
 
-sub_by=int(sys.argv[9]) # Subdomain y index
-sub_bx=int(sys.argv[10]) # Subdomain x index
+sub_bx=int(sys.argv[9]) # Subdomain x index
+sub_by=int(sys.argv[10]) # Subdomain y index
 
 # --- SET PARAMETERS
 
@@ -102,7 +102,7 @@ e2t = find_point_distance(nav_lon[0:-1,:],nav_lat[0:-1,:],nav_lon[1:,:],nav_lat[
 e1t = np.append(e1t,np.atleast_2d(e1t[:,-1]).T,axis=1)
 e2t = np.append(e2t,np.atleast_2d(e2t[-1,:]),  axis=0)
 area_cell = e1t * e2t
-print ('... mesh created.', NY,NX)
+print ('... mesh created. (NX,NY)=', NX,NY)
 
 #    CALC : as Shakespeare et al (2020) 
 # ----------
@@ -116,9 +116,9 @@ msk[bathy>=0.] = 0.
 TM2 = 12.42 # hours, M2 tidal period
 rad = np.pi / 180.0  # conversion from degree into radians
 
-# Med subdivision in 8 subdomains
-DOMX = [0,480,961,NX-1]
-DOMY = [0,1680,3360,5040,NY-1]
+# Med subdivision in 48 subdomains
+DOMY = [0,240,480,720,961,1200,NY-1]
+DOMX = [0,840,1680,2520,3360,4200,5040,5880,NX-1]
 
 # MAIN CALC
 print ('Start computation :')
@@ -208,55 +208,4 @@ np.save(temp_hrms_outfile,np.asarray(h_rms))
 temp_kbar_outfile = workdir+'/'+npy_kbar_pre+'dom'+str(by)+str(bx)
 print('Saving: [%s]' %(temp_kbar_outfile+'.npy'))
 np.save(temp_kbar_outfile,np.asarray(K_bar))
-
-
-#   --------------------
-#   | write netCDF file | TO BE RM -> FOR DEVELOPMENT ONLY
-#   --------------------
-
-if bx == 0 and by == 0 :
-   
-   outfile='temp_temp.nc'
-
-   # open netCDF file to write
-   nco  = Dataset(outfile,mode='w',format='NETCDF4')
-
-   # define axis size
-   #ncout.createDimension('time', None)  # unlimited
-   nco.createDimension('y', NY)
-   nco.createDimension('x', NX)
-   # create latitude axis
-   latout = nco.createVariable('lat', dtype('double').char, 'y')
-   latout.standard_name = 'latitude'
-   latout.long_name = 'latitude'
-   latout.units = 'degrees_north'
-   latout.axis = 'Y'
-   # create longitude axis
-   lonout = nco.createVariable('lon', dtype('double').char, 'x')
-   lonout.standard_name = 'longitude'
-   lonout.long_name = 'longitude'
-   lonout.units = 'degrees_east'
-   lonout.axis = 'X'
-   # copy axis from original dataset
-   lonout[:] = lon[:]
-   latout[:] = lat[:]
-   # create variable array : var1
-   out_var1 = nco.createVariable('h_rms', dtype('double').char, ('y','x'))
-   out_var1.long_name   = 'root mean square topograpthic height (roughness)'
-   out_var1.description = 'h_rms = \sqrt( \int |FFT(roughness)|^2 dk dl / (4*pi^2*A) )'
-   out_var1.units       = 'm'
-   # create variable array : var2
-   out_var2 = nco.createVariable('K_bar', dtype('double').char, ('y','x'))
-   out_var2.long_name   = 'height-weightened-mean wavenumber of topograpthic height (roughness)'
-   out_var2.description = 'K_bar =  \int (k^2+l^2)*|FFT(roughness)|^2 dk dl / (h_rms^2*4*pi^2*A)'
-   out_var2.units       = 'm-1'
-   # copy axis from original dataset
-   out_var1[:]   = h_rms
-   out_var2[:]   = K_bar
-   # create global attributes
-   nco.description = 'h_rms and K_bar from roughness (r) on running boxes of '+str(boxdim)+'x'+str(boxdim)+" deg, where r is original-smoothed GEBCO 1/30' bathymetry (smoothing has been applied with 2 iterations of 2nd order Shapiro filter"
-   nco.reference = 'Shakespeare et al., 2020 : The Drag on the Barotropic Tide due to the Generation of Baroclinic Motion (JPO)'
-   # close files
-   nco.close()
-   print ("Saving: [%s]" %outfile)
 
