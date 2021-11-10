@@ -41,10 +41,13 @@ out_kbar_name=str(sys.argv[11]) # kbar field name in outfile
 out_lat_name=bathy_inlat  # lat field name in outfile
 out_lon_name=bathy_inlon  # lon field name in outfile
 
+npy_hrms_pre=str(sys.argv[12]) # npy hrms Output file prename
+npy_kbar_pre=str(sys.argv[13]) # npy kbar Output file prename
+
 # --- SET PARAMETERS
 
 # set FIGURE info
-figdir  = './plots/'
+figdir  = workdir+'/plots/'
 if not(os.path.isdir(figdir)) :
    print('Creating: [%s]' %figdir)
    os.makedirs(figdir)
@@ -104,7 +107,7 @@ DOMX = [0,840,1680,2520,3360,4200,5040,5880,NX-1]
 # Merge subdomains
 for bx in range(0,sub_bx_num+1):
     for by in range(0,sub_by_num+1):
-        subdom = str(bx)+str(by)
+        subdom = str(by)+str(bx)
         print('I am merging the subdomain: ',subdom)
 
         tmp_h = np.load(workdir+'/'+npy_hrms_pre+'dom'+subdom+'.npy')

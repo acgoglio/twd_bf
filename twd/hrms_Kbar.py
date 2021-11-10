@@ -40,7 +40,7 @@ sub_by=int(sys.argv[10]) # Subdomain y index
 # --- SET PARAMETERS
 
 # set FIGURE info
-figdir  = './plots/'
+figdir  = workdir+'/plots/'
 if not(os.path.isdir(figdir)) :
    print('Creating: [%s]' %figdir)
    os.makedirs(figdir)
