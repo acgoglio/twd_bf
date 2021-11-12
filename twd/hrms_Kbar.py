@@ -116,8 +116,8 @@ msk[bathy>=0.] = 0.
 TM2 = 12.42 # hours, M2 tidal period
 rad = np.pi / 180.0  # conversion from degree into radians
 
-# Med subdivision in 48 subdomains
-DOMY = [0,240,480,720,961,1200,NY-1]
+# Med subdivision in 40 subdomains
+DOMY = [0,480,720,961,1200,NY-1] # ,240
 DOMX = [0,840,1680,2520,3360,4200,5040,5880,NX-1]
 
 # MAIN CALC

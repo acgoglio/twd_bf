@@ -57,6 +57,7 @@ resol     = 120 # Npt/deg = 1'
 boxdim    = 5   # deg
 
 # set FLAG
+flag_calc_all  = False
 flag_hrms_plot = True
 flag_Kbar_plot = True
 flag_vars_save = True
@@ -73,7 +74,7 @@ def find_nearest(array, value):
 # Read GEBCO bathymetry file
 print ('Reading: [%s]' %fn)
 ncf = Dataset(fn,mode='r')
-bathy = ncf.variables[bathy_inname][:]  ; bathy = np.squeeze(bathy)
+bathy = ncf.variables[bathy_inname][:]       ; bathy = np.squeeze(bathy)
 lat   = ncf.variables[bathy_inlat][:]        ; lat = np.squeeze(lat)    # Y-axis
 lon   = ncf.variables[bathy_inlon][:]        ; lon = np.squeeze(lon)    # X-axis
 lat_bnd=[np.min(lat),np.max(lat)]
@@ -89,35 +90,36 @@ ncf.close()
 
 #    CALC : as Shakespeare et al (2020) 
 # ----------
-# prepare variables
-hrms_f = np.empty(shape=(NY,NX))
-kbar_f = np.empty(shape=(NY,NX))
-msk   = np.ones(shape=(NY,NX))
-msk[bathy>=0.] = 0.
-TM2 = 12.42 # hours, M2 tidal period
-rad = np.pi / 180.0  # conversion from degree into radians
-latM2 =  np.arcsin(24/(2*TM2)) / rad
-jjmin = find_nearest(lat,-latM2) - 5
-jjmax = find_nearest(lat, latM2) + 5
+if flag_calc_all:
+   # prepare variables
+   hrms_f = np.empty(shape=(NY,NX))
+   kbar_f = np.empty(shape=(NY,NX))
+   msk   = np.ones(shape=(NY,NX))
+   msk[bathy>=0.] = 0.
+   TM2 = 12.42 # hours, M2 tidal period
+   rad = np.pi / 180.0  # conversion from degree into radians
+   latM2 =  np.arcsin(24/(2*TM2)) / rad
+   jjmin = find_nearest(lat,-latM2) - 5
+   jjmax = find_nearest(lat, latM2) + 5
 
-# Med subdivision in 48 subdomains
-DOMY = [0,240,480,720,961,1200,NY-1]
-DOMX = [0,840,1680,2520,3360,4200,5040,5880,NX-1]
+   # Med subdivision in 40 subdomains
+   DOMY = [0,480,720,961,1200,NY-1] # 240
+   DOMX = [0,840,1680,2520,3360,4200,5040,5880,NX-1]
 
-# Merge subdomains
-for bx in range(0,sub_bx_num+1):
-    for by in range(0,sub_by_num+1):
-        subdom = str(by)+str(bx)
-        print('I am merging the subdomain: ',subdom)
+   # Merge subdomains
+   for bx in range(0,sub_bx_num+1):
+       for by in range(0,sub_by_num+1):
+           subdom = str(by)+str(bx)
+           print('I am merging the subdomain: ',subdom)
 
-        tmp_h = np.load(workdir+'/'+npy_hrms_pre+'dom'+subdom+'.npy')
-        tmp_k = np.load(workdir+'/'+npy_kbar_pre+'dom'+subdom+'.npy')
-        hrms_f[DOMY[by]:DOMY[by+1],DOMX[bx]:DOMX[bx+1]] = tmp_h[DOMY[by]:DOMY[by+1],DOMX[bx]:DOMX[bx+1]] 
-        kbar_f[DOMY[by]:DOMY[by+1],DOMX[bx]:DOMX[bx+1]] = tmp_k[DOMY[by]:DOMY[by+1],DOMX[bx]:DOMX[bx+1]]
+           tmp_h = np.load(workdir+'/'+npy_hrms_pre+'dom'+subdom+'.npy')
+           tmp_k = np.load(workdir+'/'+npy_kbar_pre+'dom'+subdom+'.npy')
+           hrms_f[DOMY[by]:DOMY[by+1],DOMX[bx]:DOMX[bx+1]] = tmp_h[DOMY[by]:DOMY[by+1],DOMX[bx]:DOMX[bx+1]] 
+           kbar_f[DOMY[by]:DOMY[by+1],DOMX[bx]:DOMX[bx+1]] = tmp_k[DOMY[by]:DOMY[by+1],DOMX[bx]:DOMX[bx+1]]
 
-# apply mask to the final field (to be sure...)
-hrms_f = np.where(msk==1, hrms_f, -9999.)
-kbar_f = np.where(msk==1, kbar_f, -9999.)
+   # apply mask to the final field (to be sure...)
+   hrms_f = np.where(msk==1, hrms_f, -9999.)
+   kbar_f = np.where(msk==1, kbar_f, -9999.)
 
 
 #   ---------------------
@@ -174,18 +176,22 @@ if flag_vars_save :
 
 if flag_hrms_plot :
 
+   # open netCDF file to read
+   ncf = Dataset(outfile,mode='r')
+   hrms  = ncf.variables[out_hrms_name][:]      ; hrms= np.squeeze(hrms)
+   kbar  = ncf.variables[out_kbar_name][:]      ; kbar= np.squeeze(kbar)
    # Area
    # Mask invalid values
-   nav_lon[nav_lon==0]=np.nan
+   #nav_lon[nav_lon==0]=np.nan
    # Mask variables
-   nav_lat = np.ma.masked_invalid(nav_lat)
-   lat_min=np.min(nav_lat[:,0])
-   lat_max=np.max(nav_lat[:,0])
-   lon_min=np.min(nav_lon[0,:])
-   lon_max=np.max(nav_lon[0,:])
-   nav_lon = np.ma.masked_invalid(nav_lon)
+   lat = np.ma.masked_invalid(lat)
+   lat_min=np.min(lat)
+   lat_max=np.max(lat)
+   lon_min=np.min(lon)
+   lon_max=np.max(lon)
+   lon = np.ma.masked_invalid(lon)
 
-   VAR = h_rms
+   VAR = hrms
    VARunit = '[m]'   
    VAR = np.ma.masked_invalid(VAR)
 
@@ -214,13 +220,12 @@ if flag_hrms_plot :
    plt.close('all')
 
 if flag_Kbar_plot :
-   VAR = K_bar
+   VAR = kbar
    VARunit = r'[$m^{-1}]'
    VAR = np.ma.masked_invalid(VAR)
 
-   figname = figdir +'map_Kbar_gebco1_runbox'+str(boxdim)+'_step025_fft'
+   figname = figdir +'map_Kbar.png'
    figtitle = r'$\overline{K} = \frac{1}{4A\pi^2h_{rms}^2} \int\int (k^2+l^2) |\hat{h}|^2 dk dl$'
-   figname = figname +'_'+ reg_n +'.png'
    cmap        = plt.cm.gist_heat_r   # Colormap
    [cmin,cmax] = [0.,1.e-4]       # color min and max values
 
