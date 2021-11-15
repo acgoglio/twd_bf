@@ -27,7 +27,7 @@ workdir=str(sys.argv[1]) # Work directory
 bathy_infile=str(sys.argv[2]) # Name of the bathymetry file (includes original bathy field and roughness field)
 fn=workdir+'/'+bathy_infile
 
-outfile=workdir+'/'+str(sys.argv[3]) # Output file name
+outfile_gebco=workdir+'/'+str(sys.argv[3]) # GEBCO-grid Output file name
 
 bathy_inname=str(sys.argv[4]) # original bathymetry field name in the input file
 bathy_rough=str(sys.argv[5]) # roughness field name in the input/output file
@@ -37,10 +37,10 @@ bathy_inlon=str(sys.argv[7]) # lon field name in the input file
 sub_bx_num=int(sys.argv[8]) # Num of Subdomains in x 
 sub_by_num=int(sys.argv[9]) # Num of Subdomains in y
 
-out_hrms_name=str(sys.argv[10]) # hrms field name in outfile
-out_kbar_name=str(sys.argv[11]) # kbar field name in outfile
-out_lat_name=bathy_inlat  # lat field name in outfile
-out_lon_name=bathy_inlon  # lon field name in outfile
+out_hrms_name=str(sys.argv[10]) # hrms field name in both outfile
+out_kbar_name=str(sys.argv[11]) # kbar field name in both outfile
+out_lat_name=bathy_inlat  # lat field name in GEBCO outfile
+out_lon_name=bathy_inlon  # lon field name in GEBCO outfile
 
 npy_hrms_pre=str(sys.argv[12]) # npy hrms Output file prename
 npy_kbar_pre=str(sys.argv[13]) # npy kbar Output file prename
@@ -52,6 +52,8 @@ eas_Bathymetry=str(sys.argv[17])  # eas Bathymetry field name in the bathy file
 
 eas_mesh=str(sys.argv[18])  # Path/Name of the EAS system mesh mask file
 eas_tmask=str(sys.argv[19])  # eas tmask field name in the mesh mask file
+
+outfile_eas=workdir+'/'+str(sys.argv[20]) # EAS-grid Output file name
 
 # --- SET PARAMETERS
 
@@ -155,7 +157,7 @@ if flag_calc_all:
 
 if flag_gebco_vars_save :
    # open netCDF file to write
-   nco  = Dataset(outfile,mode='w',format='NETCDF4')
+   nco  = Dataset(outfile_gebco,mode='w',format='NETCDF4')
 
    # define axis size
    #ncout.createDimension('time', None)  # unlimited
@@ -194,7 +196,7 @@ if flag_gebco_vars_save :
    nco.reference = 'Shakespeare et al., 2020 : The Drag on the Barotropic Tide due to the Generation of Baroclinic Motion (JPO)'
    # close files
    nco.close()
-   print ("Saving: [%s]" %outfile)
+   print ("Saving: [%s]" %outfile_gebco)
 
 
 #   ----------------------------------------------
@@ -226,7 +228,7 @@ if flag_regrid:
 
 
    # Read the fields to be interpolated
-   ncf = Dataset(outfile,mode='r')
+   ncf = Dataset(outfile_gebco,mode='r')
    hrms  = ncf.variables[out_hrms_name][:]      ; hrms= np.squeeze(hrms)
    kbar  = ncf.variables[out_kbar_name][:]      ; kbar= np.squeeze(kbar)
    ncf.close()
@@ -318,9 +320,26 @@ if flag_regrid:
    print('..Done!')
 
 
-   # Add the outfields in the outfile
+   # Add the outfields in the outfile_eas
    if flag_eas_vars_save :
 
+   nc2open=workdir+'/'+outfile_eas
+   print ('I am going to open and modify the following file: ',nc2open)
+   temp_file = NC.Dataset(nc2open,'r+')
+
+   # Create the new fields to be appended in the input/output netCDF
+   print ('I am going to add the new regridded hrms and kbar fields to the outfile template ',outfile_eas)
+   new_eas_hrms=temp_file.createVariable(out_hrms_name,np.float64,(nav_lat,nav_lon))
+   new_eas_hrms.units = 'm'
+   new_eas_kbar=temp_file.createVariable(out_kbar_name,np.float64,(nav_lat,nav_lon))
+   new_eas_kbar.units = 'm-1'
+
+   # Add the fields
+   new_eas_hrms[:]=hrms_eas[:]
+   new_eas_kbar[:]=kbar_eas[:]
+
+   temp_file.close()
+   print ('Done')
 
 #   -----------------------
 #   |    make the plot    |
