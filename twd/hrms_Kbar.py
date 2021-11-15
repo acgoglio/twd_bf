@@ -116,8 +116,8 @@ msk[bathy>=0.] = 0.
 TM2 = 12.42 # hours, M2 tidal period
 rad = np.pi / 180.0  # conversion from degree into radians
 
-# Med subdivision in 40 subdomains
-DOMY = [0,480,720,961,1200,NY-1] # ,240
+# Med subdivision in 48 subdomains
+DOMY = [0,480,720,961,1200,NY-1] # 240
 DOMX = [0,840,1680,2520,3360,4200,5040,5880,NX-1]
 
 # MAIN CALC
@@ -147,8 +147,10 @@ for ji in range(DOMX[bx],DOMX[bx+1]) :
 
       # cut the box mask
       if centre_reg :
+         #print ('CASE centre_reg msk[ya:yb,xa:xb]', msk[ya:yb,xa:xb])
          msk_b = msk[ya:yb,xa:xb]
       elif left_reg or right_reg :
+         #print ('CASE left_reg or right_reg')
          msk_b = np.concatenate((msk[ya:yb,xa:-1],msk[ya:yb,0:xb]), axis=1)
       else: 
          print ('ERROR!!!')
@@ -188,11 +190,14 @@ for ji in range(DOMX[bx],DOMX[bx+1]) :
          integ  = np.sum( hhat2*dk*dl ,axis=(0,1)) # integral
          frac   = 4*Area*(np.pi)**2
          hrms_b = np.sqrt( integ/frac )
+         #print ('hrms ',hrms_b)
          # calc K_bar
          integ  = np.sum( Kmod*hhat2*dk*dl ,axis=(0,1))
          frac   = 4*Area*(np.pi*hrms_b)**2
-         Kbar_b = integ/frac 
+         Kbar_b = integ/frac
+         #print ('Kbar_b ',Kbar_b) 
       else :
+         #print ('CASE: np.nansum(msk_b)<=0')
          hrms_b = 0.
          Kbar_b = 0.
       h_rms[jj,ji] = hrms_b
