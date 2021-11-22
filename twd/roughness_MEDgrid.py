@@ -38,8 +38,10 @@ bathy_inlon=str(sys.argv[7]) # lon field name in the input/output file
 
 eas_bathy=str(sys.argv[8]) # Path/Name of the EAS system bathymetry file
 eas_Bathymetry=str(sys.argv[9])    # eas Bathymetry field name in the bathy file
+eas_lat=str(sys.argv[10])           # eas lat field name in the mesh mask file
+eas_lon=str(sys.argv[11])           # eas lon field name in the mesh mask file
 
-print ('You are running the script with the following line args: ', workdir,bathy_infile,bathy_inname,bathy_outname,bathy_rough,bathy_inlat,bathy_inlon,eas_bathy,eas_Bathymetry)
+print ('You are running the script with the following line args: ', workdir,bathy_infile,bathy_inname,bathy_outname,bathy_rough,bathy_inlat,bathy_inlon,eas_bathy,eas_Bathymetry,eas_lat,eas_lon)
 
 # Flags
 flag_computesave_roughness=1
@@ -54,29 +56,22 @@ if flag_computesave_roughness == 1:
    bathy_infield = NC.Dataset(nc2open,'r+')
    
    inbathymetry=bathy_infield.variables[bathy_inname][:]
-   lat=bathy_infield.variables[bathy_inlat][:]
-   lon=bathy_infield.variables[bathy_inlon][:]
-   
-   #Im=len(lon)
-   #Jm=len(lat)
-   #print ('Grid dims are: (lon,lat)= ',Im,Jm)
-   
-   #F=inbathymetry
    
    # Create the new fields to be appended in the input/output netCDF
    print ('I am going to add the new bathymetry field: ',bathy_outname)
-   outbathymetry=bathy_infield.createVariable(bathy_outname,np.float64,(bathy_inlat,bathy_inlon))
+   outbathymetry=bathy_infield.createVariable(bathy_outname, np.float64, (bathy_inlat,bathy_inlon))
    outbathymetry.units = 'm'
    
    # Read the EAS bathymetry field
    print ('Reading: [%s]' %eas_bathy)
-   bncf = Dataset(eas_bathy,mode='r')
-   easbathy = bncf.variables[eas_Bathymetry][:] 
+   bncf = NC.Dataset(eas_bathy,mode='r')
+   easbathy = bncf.variables[eas_Bathymetry][0,:,:] 
    bncf.close()
    
    # Write the new fields in the input/output netCDF
    print ('I am writing the new field in the input/output netCDF..')
-   outbathymetry[:]=np.squeeze(easbathy)
+   print('easbathy',easbathy.shape)
+   outbathymetry[:]=easbathy[:]
    
    bathy_infield.close()
    print ('Done')
@@ -92,8 +87,8 @@ if flag_computesave_roughness == 1:
    # Read the fields
    inbathymetry=bathy_infield.variables[bathy_inname][:]
    outbathymetry=bathy_infield.variables[bathy_outname][:]
-   lat=bathy_infield.variables[bathy_inlat][:]
-   lon=bathy_infield.variables[bathy_inlon][:]
+   #lat=bathy_infield.variables[bathy_inlat][:]
+   #lon=bathy_infield.variables[bathy_inlon][:]
    
    # Create the new fields to be appended in the input/output netCDF
    print ('I am going to add the new bathymetry field: ',bathy_outname)
@@ -108,6 +103,7 @@ if flag_computesave_roughness == 1:
    
    bathy_infield.close()
    print ('Done')
+
 ###############################
 # Plot the Roughness field
 if flag_plot_roughness == 1:
@@ -116,16 +112,14 @@ if flag_plot_roughness == 1:
 
    bathy_infield = NC.Dataset(nc2open,'r')
 
-   lat=bathy_infield.variables[bathy_inlat][:]
-   lon=bathy_infield.variables[bathy_inlon][:]
+   nav_lat = bathy_infield.variables[eas_lat][:]   ; nav_lat = np.squeeze(nav_lat)        # Y-axis
+   nav_lon = bathy_infield.variables[eas_lon][:]   ; nav_lon = np.squeeze(nav_lon)        # X-axis
    roughness=bathy_infield.variables[bathy_rough][:]
-   inbathymetry=bathy_infield.variables[bathy_inname][:]
+   inbathymetry=bathy_infield.variables[bathy_inname][0,:,:]
 
    bathy_infield.close()
 
    # Area
-   # Mask invalid values
-   nav_lon[nav_lon==0]=np.nan
    # Mask variables
    nav_lat = np.ma.masked_invalid(nav_lat)
    lat_min=np.min(nav_lat[:,0])
@@ -133,7 +127,7 @@ if flag_plot_roughness == 1:
    lon_min=np.min(nav_lon[0,:])
    lon_max=np.max(nav_lon[0,:])
    nav_lon = np.ma.masked_invalid(nav_lon)
-
+   print ('prova',lat_min,lat_max,lon_min,lon_max)
    # PLOT
    VAR = roughness
    LAND=inbathymetry
@@ -145,26 +139,27 @@ if flag_plot_roughness == 1:
       print('Creating: [%s]' %figdir)
       os.makedirs(figdir)
 
-   figname = figdir +'map_geb_rough.png'
+   figname = figdir +'map_med_rough.png'
    figtitle = 'Roughness'
    cmap        = 'seismic' #plt.cm.gist_heat_r   # Colormap
-   [cmin,cmax] = [-500,500]       # color min and max values
+   [cmin,cmax] = [-100,100]       # color min and max values
 
    print('... make the plot ...')
    plt.figure()
+   plt.rc('font', size=12)
    plt.rcParams['lines.linewidth'] = 0.3
    m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   fig = m.pcolor(x,y,VAR, cmap=cmap, vmin=cmin, vmax=cmax)
-   #fig = plt.contourf(lon,lat,VAR,cmap=cmap, vmin=cmin, vmax=cmax)
-   #pcf  = plt.contourf(lon,lat,LAND,levels=[0.000,15.0], colors='dimgray')
-   #pc    = plt.contour(x,y,bathy, levels=[15.0], colors='black',linewidth=0.3) # tmask[0,:,:]
+   #fig = m.pcolor(x,y,VAR, cmap=cmap, vmin=cmin, vmax=cmax)
+   fig = m.contourf(x,y,VAR, levels=[-110,-90,-70,-50,-30,-10,10,30,50,70,90,110] ,cmap=cmap, vmin=cmin, vmax=cmax)
+   pcf  = plt.contourf(x,y,LAND, levels=[0.000,15.0], colors='dimgray')
+   pc    = plt.contour(x,y,LAND, levels=[15.0], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='18')
-   cbar = plt.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
-   cbar.set_label(VARunit,fontsize='14')
-   cbar.ax.tick_params(labelsize='12')
+   cbar = m.colorbar(fig,'bottom', size='8%', pad='10%', extend='both')
+   cbar.set_label('Roughness ['+VARunit+']',fontsize='8')
+   cbar.ax.tick_params(labelsize='8')
    cbar.formatter.set_powerlimits((0, 0))
 
    print ('Saving: [%s]' % figname)
