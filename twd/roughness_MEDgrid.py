@@ -41,7 +41,7 @@ eas_Bathymetry=str(sys.argv[9])    # eas Bathymetry field name in the bathy file
 eas_lat=str(sys.argv[10])           # eas lat field name in the mesh mask file
 eas_lon=str(sys.argv[11])           # eas lon field name in the mesh mask file
 
-print ('You are running the script with the following line args: ', workdir,bathy_infile,bathy_inname,bathy_outname,bathy_rough,bathy_inlat,bathy_inlon,eas_bathy,eas_Bathymetry,eas_lat,eas_lon)
+#print ('You are running the script with the following line args: ', workdir,bathy_infile,bathy_inname,bathy_outname,bathy_rough,bathy_inlat,bathy_inlon,eas_bathy,eas_Bathymetry,eas_lat,eas_lon)
 
 # Flags
 flag_computesave_roughness=1
