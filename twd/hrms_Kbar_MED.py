@@ -215,15 +215,15 @@ if flag_eas_vars_save :
    temp_file = Dataset(nc2open,'r+')
 
    # Create the new fields to be appended in the input/output netCDF
-   print ('I am going to add the new hrms and kbar fields to the outfile: ',bathy_infile)
+   print ('I am going to add the new hrms and kbar fields to the outfile: ',nc2open)
    new_eas_hrms=temp_file.createVariable(out_hrms_name,dtype('double').char, ('y','x'))
    new_eas_hrms.units = 'm'
-   new_eas_kbar=temp_file.createVariable(out_kbar_name,dtype('double').char, ('y','x')) #np.float64,(bathy_inlat,bathy_inlon))
+   new_eas_kbar=temp_file.createVariable(out_kbar_name,dtype('double').char, ('y','x'))
    new_eas_kbar.units = 'm-1'
 
    # Add the fields
-   new_eas_hrms[:]=hrms_b
-   new_eas_kbar[:]=Kbar_b
+   new_eas_hrms[:]=h_rms
+   new_eas_kbar[:]=K_bar
 
    temp_file.close()
    print ('Done')
