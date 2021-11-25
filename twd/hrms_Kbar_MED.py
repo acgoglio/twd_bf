@@ -34,11 +34,11 @@ bathy_rough=str(sys.argv[6]) # roughness field name in the input/output file
 bathy_inlat=str(sys.argv[7]) # lat field name in the input/output file
 bathy_inlon=str(sys.argv[8]) # lon field name in the input/output file
 
-sub_bx=int(sys.argv[9]) # Subdomain x index
-sub_by=int(sys.argv[10]) # Subdomain y index
+out_hrms_name=str(sys.argv[9]) # hrms field name in both outfile
+out_kbar_name=str(sys.argv[10]) # kbar field name in both outfile
 
-out_hrms_name=str(sys.argv[11]) # hrms field name in both outfile
-out_kbar_name=str(sys.argv[12]) # kbar field name in both outfile
+outfile=str(sys.argv[11])
+outfile=workdir+'/'+outfile
 
 # --- SET PARAMETERS
 
@@ -50,13 +50,9 @@ if not(os.path.isdir(figdir)) :
    print('Creating: [%s]' %figdir)
    os.makedirs(figdir)
 
-# set BOXES info for GEBCO 1/30'  
-resol     = 24 #120 # Npt/deg = 1'
+# set BOXES info for MED24 grid
+resol     = 24  #N pt/deg = 1'
 boxdim    = 5   # deg
-
-# set SUBDOMAINS info
-[by,bx] = [sub_by,sub_bx]
-
 
 #### ------- DO NOT CHANGE below this line ------- #####
 
@@ -91,19 +87,8 @@ lat = np.squeeze(lat)
 nav_lon = ncf.variables[bathy_inlon][:]        # X-axis
 lon = nav_lon[0,:]
 lon = np.squeeze(lon)
-
-#nav_lat = ncf.variables[bathy_inlat][:]        # Y-axis
-#nav_lon = ncf.variables[bathy_inlon][:]        # X-axis
-#
-#lat_min=np.min(nav_lat[:,0])
-#lat_max=np.max(nav_lat[:,0])
-#lon_min=np.min(nav_lon[0,:])
-#lon_max=np.max(nav_lon[0,:])
-
 lat_bnd=[np.min(lat),np.max(lat)]
 lon_bnd=[np.min(lon),np.max(lon)]
-#lat_bnd=[lat_min,lat_max]
-#lon_bnd=[lon_min,lon_max]
 ncf.close()
 
 # Read GEBCO roughness file
@@ -136,16 +121,11 @@ msk[bathy<=0.] = 0.
 TM2 = 12.42 # hours, M2 tidal period
 rad = np.pi / 180.0  # conversion from degree into radians
 
-# Med subdivision in 48 subdomains
-#DOMY = [0,95,190,285,NY-1]
-#DOMX = [0,160,320,480,640,800,960,1120,NX-1]
-
 # MAIN CALC
 print ('Start computation :')
 print ('Compute running mean over 5x5deg boxes with steps of 1 grid point ...')
 start = time.time()
 
-#for ji in range(DOMX[bx],DOMX[bx+1]) :
 for ji in range(0,NX):
    #print ('Running index: ',ji)
    # define different x-position ranges to compose boxes near periodic boundaries
@@ -161,7 +141,6 @@ for ji in range(0,NX):
       [xa,xb]    = [ji-mid, ji-(NX-mid-1)]
 
    # compute only lats with f<M2freq (higher are not used in wave drag parametrization)
-   #for jj in range(DOMY[by],DOMY[by+1]) :
    for jj in range(0,NY) :
       print ('Running indexes: ',ji,jj)
       # all points near south and north boundaries will be equal to their interior neighbours
@@ -231,7 +210,7 @@ print(end-start)
 # Add the outfields in the outfile_eas
 if flag_eas_vars_save :
 
-   nc2open=workdir+'/'+bathy_infile
+   nc2open=outfile
    print ('I am going to open and modify the following file: ',nc2open)
    temp_file = Dataset(nc2open,'r+')
 
@@ -249,11 +228,4 @@ if flag_eas_vars_save :
    temp_file.close()
    print ('Done')
 
-# --- write NPY file
-#temp_hrms_outfile = workdir+'/'+npy_hrms_pre+'dom'+str(by)+str(bx)
-#print('Saving: [%s]' %(temp_hrms_outfile+'.npy'))
-#np.save(temp_hrms_outfile,np.asarray(h_rms))
-#temp_kbar_outfile = workdir+'/'+npy_kbar_pre+'dom'+str(by)+str(bx)
-#print('Saving: [%s]' %(temp_kbar_outfile+'.npy'))
-#np.save(temp_kbar_outfile,np.asarray(K_bar))
 
