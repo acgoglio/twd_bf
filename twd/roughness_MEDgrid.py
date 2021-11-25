@@ -41,7 +41,7 @@ eas_Bathymetry=str(sys.argv[9])    # eas Bathymetry field name in the bathy file
 eas_lat=str(sys.argv[10])           # eas lat field name in the mesh mask file
 eas_lon=str(sys.argv[11])           # eas lon field name in the mesh mask file
 
-#print ('You are running the script with the following line args: ', workdir,bathy_infile,bathy_inname,bathy_outname,bathy_rough,bathy_inlat,bathy_inlon,eas_bathy,eas_Bathymetry,eas_lat,eas_lon)
+print ('You are running the script with the following line args: ', workdir,bathy_infile,bathy_inname,bathy_outname,bathy_rough,bathy_inlat,bathy_inlon,eas_bathy,eas_Bathymetry,eas_lat,eas_lon)
 
 # Flags
 flag_computesave_roughness=1
@@ -87,8 +87,6 @@ if flag_computesave_roughness == 1:
    # Read the fields
    inbathymetry=bathy_infield.variables[bathy_inname][:]
    outbathymetry=bathy_infield.variables[bathy_outname][:]
-   #lat=bathy_infield.variables[bathy_inlat][:]
-   #lon=bathy_infield.variables[bathy_inlon][:]
    
    # Create the new fields to be appended in the input/output netCDF
    print ('I am going to add the new bathymetry field: ',bathy_outname)
@@ -146,7 +144,7 @@ if flag_plot_roughness == 1:
 
    print('... make the plot ...')
    plt.figure()
-   plt.rc('font', size=12)
+   plt.rc('font', size=10)
    plt.rcParams['lines.linewidth'] = 0.3
    m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
@@ -159,7 +157,7 @@ if flag_plot_roughness == 1:
    plt.title( figtitle, fontsize='18')
    cbar = m.colorbar(fig,'bottom', size='8%', pad='10%', extend='both')
    cbar.set_label('Roughness ['+VARunit+']',fontsize='8')
-   cbar.ax.tick_params(labelsize='8')
+   cbar.ax.tick_params(labelsize='10')
    cbar.formatter.set_powerlimits((0, 0))
 
    print ('Saving: [%s]' % figname)
