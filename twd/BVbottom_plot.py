@@ -49,14 +49,15 @@ if not(os.path.isdir(figdir)) :
    os.makedirs(figdir)
 
 # set FLAG
-flag_calc_bnbot = True
-flag_save_bnbot = True
+flag_calc_bnbot = False
+flag_save_bnbot = False
 flag_plot_shap   = True
 
 
 ##### ------- DO NOT CHANGE below this line ------- #####
 
 # --- SET PARAMETERS
+ 
 # Read mesh info
 filemesh = eas_mesh
 print ("Reading: [%s]" %filemesh)
@@ -203,41 +204,42 @@ def shapiro1D(Finp,order,scheme):
      return Fout
 
 # --------- apply the filtering to bnbot field
-# 2D Filtering of the field
-F=bnb
-Fout=F
-Im=NX
-Jm=NY
-print ('Grid dims are: (lon,lat)= ',Im,Jm)
-for n in range (1,napp+1):
-   print(n,'^ application of the Shapiro filter ongoing..')
-
-   # ----------------------------------------------------------------------------
-   #  Filter all rows.
-   # ----------------------------------------------------------------------------
-   print ('I am going to filter the rows..')
-   for j in range (0,Im):
-       #print ('Filtering row num: ',j)
-       Fraw=np.squeeze(F[:,j])
-       # Run Shapiro 1D
-       Fwrk=shapiro1D(Fraw,order,scheme)
-       Fout[:,j]=Fwrk
-       #print ('row Done!')
-
-   # ----------------------------------------------------------------------------
-   #  Filter all columns.
-   # ----------------------------------------------------------------------------
-   print ('I am going to filter the columns..')
-   for i in range (0,Jm):
-       #print ('Filtering col num: ',i)
-       Fraw=np.squeeze(Fout[i,:])
-       # Run Shapiro 1D
-       Fwrk=shapiro1D(Fraw,order,scheme)
-       Fout[i,:]=Fwrk
-       #print ('row Done!')
-
-   F=Fout
-   bnb=F
+if napp != 0 and flag_calc_bnbot :
+   # 2D Filtering of the field
+   F=bnb
+   Fout=F
+   Im=NX
+   Jm=NY
+   print ('Grid dims are: (lon,lat)= ',Im,Jm)
+   for n in range (1,napp+1):
+      print(n,'^ application of the Shapiro filter ongoing..')
+   
+      # ----------------------------------------------------------------------------
+      #  Filter all rows.
+      # ----------------------------------------------------------------------------
+      print ('I am going to filter the rows..')
+      for j in range (0,Im):
+          #print ('Filtering row num: ',j)
+          Fraw=np.squeeze(F[:,j])
+          # Run Shapiro 1D
+          Fwrk=shapiro1D(Fraw,order,scheme)
+          Fout[:,j]=Fwrk
+          #print ('row Done!')
+   
+      # ----------------------------------------------------------------------------
+      #  Filter all columns.
+      # ----------------------------------------------------------------------------
+      print ('I am going to filter the columns..')
+      for i in range (0,Jm):
+          #print ('Filtering col num: ',i)
+          Fraw=np.squeeze(Fout[i,:])
+          # Run Shapiro 1D
+          Fwrk=shapiro1D(Fraw,order,scheme)
+          Fout[i,:]=Fwrk
+          #print ('row Done!')
+   
+      F=Fout
+      bnb=F
 
 # --------- save "bnb" in netCDF file
 if flag_save_bnbot :
@@ -280,10 +282,6 @@ if flag_save_bnbot :
    print ("Saving: [%s]" %outf)
 
 # --------
-# !!! now shapiro filter should be applied using MATLAB
-# !!! so the filtered BNBOT should be read from a different file 
-# --------
-
 
 if flag_plot_shap :
    # Read file
@@ -291,6 +289,7 @@ if flag_plot_shap :
    print ('Reading: [%s]' %fn)
    ncf = Dataset(fn,mode='r')
    bnbot = ncf.variables[outfield][:]   
+   print ('Done')
    ncf.close()
 
    # Area
@@ -310,14 +309,13 @@ if flag_plot_shap :
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
-   k = 0 #for k,reg_n in enumerate(region):
+   k = 0
    figname = figdir +'map_bottomBV.png'
    figtitle = r'$N_{bottom}$'
-   cmap        = cm.get_cmap('bone_r') # Colormap
-   cmap        = cm.get_cmap('twilight') # Colormap
-   #[cmin,cmax] = [1.e-4,VAR.max()]            # color min and max values
-   #[cmin,cmax] = [1.e-8,VAR.max()]            # color min and max values
-   [cmin,cmax] = [1.e-5,1.e+0]
+   #cmap        = cm.get_cmap('bone_r') 
+   #cmap        = cm.get_cmap('twilight')
+   cmap        = cm.get_cmap('viridis')
+   [cmin,cmax] = [1.e-5,1.e-1]
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
@@ -325,12 +323,12 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3) 
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   fig = m.pcolor(x,y,VAR, cmap=cmap, norm=colors.LogNorm(vmin=cmin, vmax=cmax) )
+   fig = m.pcolor(x,y,VAR, cmap=cmap, norm=colors.LogNorm(vmin=cmin, vmax=cmax) ) # [0.00001,0.00005,0.0001,0.0005,0.001,0.005,0.01,0.05,0.1,0.5,1.0]
+   #lvls = np.logspace(-5,-1,5,endpoint=True) # levels=[0.0001,0.0005,0.001,0.005,0.01,0.05,0.1]
+   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='both' ) 
    #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
-   #m.fillcontinents(color='0.8',lake_color='0.9')
-   #m.drawcoastlines(color='dimgray', linewidth=0.3)
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
-   pc    = plt.contour(x,y,bathy, levels=[15.0], colors='black',linewidth=0.3) # tmask[0,:,:]
+   pc    = plt.contour(x,y,bathy, levels=[15.0], colors='black',linewidth=0.3) 
    plt.title( figtitle, fontsize='18')
    cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
    cbar.set_label(VARunit,fontsize='14')
@@ -339,7 +337,6 @@ if flag_plot_shap :
    print ('Saving: [%s]' % figname)
    plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
    plt.close('all')
-
 
 #
 ## --- END
