@@ -41,6 +41,8 @@ eas_Bathymetry=str(sys.argv[9])    # eas Bathymetry field name in the bathy file
 eas_lat=str(sys.argv[10])           # eas lat field name in the mesh mask file
 eas_lon=str(sys.argv[11])           # eas lon field name in the mesh mask file
 
+np2be0=int(sys.argv[12]) # Num of Atlantic bdy points to be set to 0 (because of the artificialy modified EAS bathymetry) 
+
 print ('You are running the script with the following line args: ', workdir,bathy_infile,bathy_inname,bathy_outname,bathy_rough,bathy_inlat,bathy_inlon,eas_bathy,eas_Bathymetry,eas_lat,eas_lon)
 
 # Flags
@@ -57,6 +59,8 @@ if flag_computesave_roughness == 1:
    bathy_infield = NC.Dataset(nc2open,'r+')
    
    inbathymetry=bathy_infield.variables[bathy_inname][:]
+   nav_lat = bathy_infield.variables[eas_lat][:]   ; nav_lat = np.squeeze(nav_lat)        # Y-axis
+   nav_lon = bathy_infield.variables[eas_lon][:]   ; nav_lon = np.squeeze(nav_lon)        # X-axis
    
    # Create the new fields to be appended in the input/output netCDF
    print ('I am going to add the new bathymetry field: ',bathy_outname)
@@ -98,6 +102,24 @@ if flag_computesave_roughness == 1:
    
    diff=inbathymetry[:]-outbathymetry[:]
    print ('Max diff', np.min(diff),np.max(diff),np.mean(diff))
+
+   # Correction for Atlantic bdy: put roughness to 0 in the first np2be0 grid points
+   # Set to 0 the first 10 points on the western bdy
+   diff[0,:,0:np2be0] = 0.
+   # Set to 0 the first 10 points on the lower bdy
+   zero_lat_idx=int(np.where(nav_lon[0,:] == 0.)[0]+1)
+   for x_idx in range (0,zero_lat_idx): 
+       for y_idx in range (0,np2be0):
+           if outbathymetry[y_idx,x_idx] != 0.:
+              diff[0,y_idx,x_idx] = 0.
+   # Set to 0 the first 10 points on the upper bdy
+   NY=len(nav_lat[:,0])
+   for x_idx in range (0,zero_lat_idx):
+       for y_idx in range (NY-np2be0,NY):
+           if outbathymetry[y_idx,x_idx] != 0.:
+              diff[0,y_idx,x_idx] = 0.
+
+   # Write the new field 
    diff_bathy[:]=diff[:]
    
    bathy_infield.close()

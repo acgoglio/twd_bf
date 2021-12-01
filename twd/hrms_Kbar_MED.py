@@ -37,22 +37,22 @@ bathy_inlon=str(sys.argv[8]) # lon field name in the input/output file
 out_hrms_name=str(sys.argv[9]) # hrms field name in both outfile
 out_kbar_name=str(sys.argv[10]) # kbar field name in both outfile
 
-outfile=str(sys.argv[11])
-outfile=workdir+'/'+outfile
+outfile=str(sys.argv[11]) # Outfile name
+outfile=workdir+'/'+outfile # Outfield name
+
+resol = int(sys.argv[12]) # Resolution of the input fields
+boxdim = int(sys.argv[13]) # Dimension of the box for the computation 
 
 # --- SET PARAMETERS
 
 flag_eas_vars_save = True
+flag_outfield_plot = True
 
 # set FIGURE info
 figdir  = workdir+'/plots/'
 if not(os.path.isdir(figdir)) :
    print('Creating: [%s]' %figdir)
    os.makedirs(figdir)
-
-# set BOXES info for MED24 grid
-resol     = 24  #N pt/deg = 1'
-boxdim    = 5   # deg
 
 #### ------- DO NOT CHANGE below this line ------- #####
 
@@ -123,52 +123,69 @@ rad = np.pi / 180.0  # conversion from degree into radians
 
 # MAIN CALC
 print ('Start computation :')
-print ('Compute running mean over 5x5deg boxes with steps of 1 grid point ...')
+print ('Compute running mean over '+str(boxdim)+'x'+str(boxdim)+' deg boxes with steps of 1 grid point ...')
 start = time.time()
 
 for ji in range(0,NX):
    #print ('Running index: ',ji)
-   # define different x-position ranges to compose boxes near periodic boundaries
-   [left_reg,centre_reg,right_reg] = [False, False, False]
+   # define different x-position ranges to compose boxes near boundaries
+   #[left_reg,centre_reg,right_reg] = [False, False, False]
+   # Left bdy:
    if ji<mid :
-      left_reg   = True
-      [xa,xb]    = [NX-(mid-ji)-1, ji+mid]
+    #  left_reg   = True
+      [xa,xb]    = [0, ji+mid+(mid-ji)]
+   # Internal 
    elif ji>=mid and ji<(NX-1-mid) :
-      centre_reg = True
+     # centre_reg = True
       [xa,xb]    = [ji-mid, ji+mid]
+   # Right bdy:
    elif ji>=(NX-1-mid) :
-      right_reg  = True
-      [xa,xb]    = [ji-mid, ji-(NX-mid-1)]
+      #right_reg  = True
+      [xa,xb]    = [ji-mid+(ji-(NX-mid-1)), NX-1]
 
    # compute only lats with f<M2freq (higher are not used in wave drag parametrization)
    for jj in range(0,NY) :
-      print ('Running indexes: ',ji,jj)
-      # all points near south and north boundaries will be equal to their interior neighbours
-      [ya,yb] = [jj-mid, jj+mid] 
+      #print ('Running indexes: ',ji,jj)
+      # define different y-position ranges to compose boxes near boundaries
+      # Lower bdy:
+      if jj<mid :
+         [ya,yb] = [0, jj+mid+(mid-jj)]
+      # Internal
+      elif jj>=mid and jj<(NY-1-mid) : 
+         [ya,yb] = [jj-mid, jj+mid] 
+      # Upper bdy:
+      elif jj>=(NY-1-mid) :
+         [ya,yb] = [jj-mid-(jj+mid-(NY-1)), NY-1]
 
       # cut the box mask
-      if centre_reg :
-         #print ('CASE centre_reg msk[ya:yb,xa:xb]', msk[ya:yb,xa:xb])
-         msk_b = msk[ya:yb,xa:xb]
-      elif left_reg or right_reg :
-         #print ('CASE left_reg or right_reg')
-         msk_b = np.concatenate((msk[ya:yb,xa:-1],msk[ya:yb,0:xb]), axis=1)
-      else: 
-         print ('ERROR!!!')
-         sys.exit()
+      msk_b = msk[ya:yb,xa:xb]
+      #if centre_reg :
+      #   #print ('CASE centre_reg msk[ya:yb,xa:xb]', msk[ya:yb,xa:xb])
+      #   msk_b = msk[ya:yb,xa:xb]
+      #elif left_reg or right_reg :
+      #   #print ('CASE left_reg or right_reg')
+      #   msk_b = np.concatenate((msk[ya:yb,xa:-1],msk[ya:yb,0:xb]), axis=1)
+      #else: 
+      #   print ('ERROR!!!')
+      #   sys.exit()
+
       # check ocean presence, box has AT LEAST ONE point 
       if np.nansum(msk_b)>0 :  
          # cut matricex boxes
-         if centre_reg :
-            Area = area_cell[ya:yb,xa:xb]
-            h    = rough[ya:yb,xa:xb]
-            dx   = e1t[ya:yb,xa:xb]
-            dy   = e2t[ya:yb,xa:xb]
-         elif left_reg or right_reg :
-            Area = np.concatenate((area_cell[ya:yb,xa:-1],area_cell[ya:yb,0:xb]), axis=1)
-            h    = np.concatenate((rough[ya:yb,xa:-1]    ,rough[ya:yb,0:xb])    , axis=1)
-            dx   = np.concatenate((e1t[ya:yb,xa:-1]      ,e1t[ya:yb,0:xb])      , axis=1)
-            dy   = np.concatenate((e2t[ya:yb,xa:-1]      ,e2t[ya:yb,0:xb])      , axis=1)
+         Area = area_cell[ya:yb,xa:xb]
+         h    = rough[ya:yb,xa:xb]
+         dx   = e1t[ya:yb,xa:xb]
+         dy   = e2t[ya:yb,xa:xb]
+         #if centre_reg :
+         #   Area = area_cell[ya:yb,xa:xb]
+         #   h    = rough[ya:yb,xa:xb]
+         #   dx   = e1t[ya:yb,xa:xb]
+         #   dy   = e2t[ya:yb,xa:xb]
+         #elif left_reg or right_reg :
+         #   Area = np.concatenate((area_cell[ya:yb,xa:-1],area_cell[ya:yb,0:xb]), axis=1)
+         #   h    = np.concatenate((rough[ya:yb,xa:-1]    ,rough[ya:yb,0:xb])    , axis=1)
+         #   dx   = np.concatenate((e1t[ya:yb,xa:-1]      ,e1t[ya:yb,0:xb])      , axis=1)
+         #   dy   = np.concatenate((e2t[ya:yb,xa:-1]      ,e2t[ya:yb,0:xb])      , axis=1)
          Area = np.sum(Area,axis=(0,1)) # working with FT all points are considered even if they are dry!
          [Nyb,Nxb] = h.shape
 
@@ -190,15 +207,20 @@ for ji in range(0,NX):
          # calc h_rms
          integ  = np.sum( hhat2*dk*dl ,axis=(0,1)) # integral
          frac   = 4*Area*(np.pi)**2
+         #print ('integ and frac',integ,frac)
          hrms_b = np.sqrt( integ/frac )
-         print ('hrms ',hrms_b)
+         #print ('hrms ',hrms_b)
          # calc K_bar
-         integ  = np.sum( Kmod*hhat2*dk*dl ,axis=(0,1))
-         frac   = 4*Area*(np.pi*hrms_b)**2
-         Kbar_b = integ/frac
-         print ('Kbar_b ',Kbar_b) 
+         if hrms_b != 0. :
+            integ  = np.sum( Kmod*hhat2*dk*dl ,axis=(0,1))
+            frac   = 4*Area*(np.pi*hrms_b)**2
+            #print ('integ and frac',integ,frac)
+            Kbar_b = integ/frac
+         else:
+            Kbar_b = 0.
+         #print ('Kbar_b ',Kbar_b) 
       else :
-         print ('CASE: np.nansum(msk_b)<=0')
+         #print ('CASE: np.nansum(msk_b)<=0')
          hrms_b = 0.
          Kbar_b = 0.
       h_rms[jj,ji] = hrms_b
@@ -227,5 +249,109 @@ if flag_eas_vars_save :
 
    temp_file.close()
    print ('Done')
+
+# Plot the output fields
+if flag_outfield_plot :
+
+   # Input file path/name
+   nc2open=outfile
+
+   print ('I am going to open and plot the following file: ',nc2open)
+
+   bathy_infield = Dataset(nc2open,'r')
+
+   nav_lat = bathy_infield.variables[bathy_inlat][:]   ; nav_lat = np.squeeze(nav_lat)        # Y-axis
+   nav_lon = bathy_infield.variables[bathy_inlon][:]   ; nav_lon = np.squeeze(nav_lon)        # X-axis
+   roughness=bathy_infield.variables[bathy_rough][:]
+   hrms_out=bathy_infield.variables[out_hrms_name][:]
+   kbar_out=bathy_infield.variables[out_kbar_name][:]
+   inbathymetry=bathy_infield.variables[bathy_inname][:]
+
+   bathy_infield.close()
+
+   # Area
+   # Mask variables
+   nav_lat = np.ma.masked_invalid(nav_lat)
+   lat_min=np.min(nav_lat[:,0])
+   lat_max=np.max(nav_lat[:,0])
+   lon_min=np.min(nav_lon[0,:])
+   lon_max=np.max(nav_lon[0,:])
+   nav_lon = np.ma.masked_invalid(nav_lon)
+
+   # PLOT HRMS
+   VAR = hrms_out
+   LAND=inbathymetry
+   VARunit = 'm'
+   VAR = np.ma.masked_invalid(VAR)
+
+   figdir  = workdir+'/plots/'
+   if not(os.path.isdir(figdir)) :
+      print('Creating: [%s]' %figdir)
+      os.makedirs(figdir)
+
+   figname = figdir +'map_med_hrms.png'
+   figtitle = 'HRMS'
+   cmap        = 'viridis' #plt.cm.gist_heat_r   # Colormap
+   [cmin,cmax] = [0,80]       # color min and max values
+
+   print('... make the plot ...')
+   plt.figure()
+   plt.rc('font', size=10)
+   plt.rcParams['lines.linewidth'] = 0.3
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
+   x, y = m(nav_lon, nav_lat)
+   fig = m.pcolor(x,y,VAR, cmap=cmap, vmin=cmin, vmax=cmax)
+   #fig = m.contourf(x,y,VAR, levels=[-90,-70,-50,-30,-10,10,30,50,70,90] ,cmap=cmap, extend='both') # levels=[-90,-70,-50,-30,-10,10,30,50,70,90]
+   pcf  = plt.contourf(x,y,LAND, levels=[0.000,15.0], colors='dimgray')
+   pc    = plt.contour(x,y,LAND, levels=[15.0], colors='black',linewidth=0.3)
+   plt.title( figtitle, fontsize='8')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='max')
+   cbar.set_label('hrms ['+VARunit+']',fontsize='8')
+   cbar.ax.tick_params(labelsize='8')
+   cbar.formatter.set_powerlimits((0, 0))
+
+   print ('Saving: [%s]' % figname)
+   plt.savefig(figname, dpi=500, bbox_inches='tight')
+   plt.close('all')
+
+   # PLOT KBAR
+   VAR = kbar_out
+   LAND=inbathymetry
+   VARunit = 'm-1'
+   VAR = np.ma.masked_invalid(VAR)
+
+   figdir  = workdir+'/plots/'
+   if not(os.path.isdir(figdir)) :
+      print('Creating: [%s]' %figdir)
+      os.makedirs(figdir)
+
+   figname = figdir +'map_med_kbar.png'
+   figtitle = 'Kbar'
+   cmap        = 'magma' #plt.cm.gist_heat_r   # Colormap
+   [cmin,cmax] = [0,0.0008]       # color min and max values
+
+   print('... make the plot ...')
+   plt.figure()
+   plt.rc('font', size=8)
+   plt.rcParams['lines.linewidth'] = 0.3
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
+   x, y = m(nav_lon, nav_lat)
+   fig = m.pcolor(x,y,VAR, cmap=cmap, vmin=cmin, vmax=cmax)
+   #fig = m.contourf(x,y,VAR, levels=[-9.0,-7.0,-5.0,-3.0,-1.0,1.0,3.0,5.0,7.0,9.0] ,cmap=cmap, extend='both') # levels=[-90,-70,-50,-30,-10,10,30,50,70,90]
+   pcf  = plt.contourf(x,y,LAND, levels=[0.000,15.0], colors='dimgray')
+   pc    = plt.contour(x,y,LAND, levels=[15.0], colors='black',linewidth=0.3)
+   plt.title( figtitle, fontsize='8')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='max')
+   cbar.set_label('Kbar [m-1]',fontsize='8')
+   cbar.ax.tick_params(labelsize='8')
+   cbar.formatter.set_powerlimits((0, 0))
+
+   print ('Saving: [%s]' % figname)
+   plt.savefig(figname, dpi=500, bbox_inches='tight')
+   plt.close('all')
 
 
