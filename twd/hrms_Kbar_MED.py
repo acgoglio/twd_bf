@@ -43,6 +43,10 @@ outfile=workdir+'/'+outfile # Outfield name
 resol = int(sys.argv[12]) # Resolution of the input fields
 boxdim = int(sys.argv[13]) # Dimension of the box for the computation 
 
+order_hk=int(sys.argv[14]) # Order of the Shapiro filter
+napp_hk=int(sys.argv[15]) # Number of Shapiro filter applications
+scheme_hk=int(sys.argv[16]) # type of boundary scheme to use ( only option 1 implemented = No change at wall, constant order ) 
+
 # --- SET PARAMETERS
 
 flag_eas_vars_save = True
@@ -129,18 +133,14 @@ start = time.time()
 for ji in range(0,NX):
    #print ('Running index: ',ji)
    # define different x-position ranges to compose boxes near boundaries
-   #[left_reg,centre_reg,right_reg] = [False, False, False]
    # Left bdy:
    if ji<mid :
-    #  left_reg   = True
       [xa,xb]    = [0, ji+mid+(mid-ji)]
    # Internal 
    elif ji>=mid and ji<(NX-1-mid) :
-     # centre_reg = True
       [xa,xb]    = [ji-mid, ji+mid]
    # Right bdy:
    elif ji>=(NX-1-mid) :
-      #right_reg  = True
       [xa,xb]    = [ji-mid+(ji-(NX-mid-1)), NX-1]
 
    # compute only lats with f<M2freq (higher are not used in wave drag parametrization)
@@ -159,15 +159,6 @@ for ji in range(0,NX):
 
       # cut the box mask
       msk_b = msk[ya:yb,xa:xb]
-      #if centre_reg :
-      #   #print ('CASE centre_reg msk[ya:yb,xa:xb]', msk[ya:yb,xa:xb])
-      #   msk_b = msk[ya:yb,xa:xb]
-      #elif left_reg or right_reg :
-      #   #print ('CASE left_reg or right_reg')
-      #   msk_b = np.concatenate((msk[ya:yb,xa:-1],msk[ya:yb,0:xb]), axis=1)
-      #else: 
-      #   print ('ERROR!!!')
-      #   sys.exit()
 
       # check ocean presence, box has AT LEAST ONE point 
       if np.nansum(msk_b)>0 :  
@@ -176,16 +167,6 @@ for ji in range(0,NX):
          h    = rough[ya:yb,xa:xb]
          dx   = e1t[ya:yb,xa:xb]
          dy   = e2t[ya:yb,xa:xb]
-         #if centre_reg :
-         #   Area = area_cell[ya:yb,xa:xb]
-         #   h    = rough[ya:yb,xa:xb]
-         #   dx   = e1t[ya:yb,xa:xb]
-         #   dy   = e2t[ya:yb,xa:xb]
-         #elif left_reg or right_reg :
-         #   Area = np.concatenate((area_cell[ya:yb,xa:-1],area_cell[ya:yb,0:xb]), axis=1)
-         #   h    = np.concatenate((rough[ya:yb,xa:-1]    ,rough[ya:yb,0:xb])    , axis=1)
-         #   dx   = np.concatenate((e1t[ya:yb,xa:-1]      ,e1t[ya:yb,0:xb])      , axis=1)
-         #   dy   = np.concatenate((e2t[ya:yb,xa:-1]      ,e2t[ya:yb,0:xb])      , axis=1)
          Area = np.sum(Area,axis=(0,1)) # working with FT all points are considered even if they are dry!
          [Nyb,Nxb] = h.shape
 
@@ -229,6 +210,125 @@ print ('... computation done.')
 end = time.time()
 print(end-start)
 
+# -----------------------------------------------
+# Define the Shapiro filter and smooth the fields
+
+# 1D Shapiro filter function
+# SHAPIRO 1D Function
+def shapiro1D(Finp,order,scheme):
+
+        Finp=np.array(Finp)
+        order=np.array(order)
+        scheme=np.array(scheme)
+
+        ###########
+        fourk=[2.500000E-1,6.250000E-2,1.562500E-2,3.906250E-3,9.765625E-4,2.44140625E-4,6.103515625E-5,1.5258789063E-5,3.814697E-6,9.536743E-7,2.384186E-7,5.960464E-8,1.490116E-8,3.725290E-9,9.313226E-10,2.328306E-10,5.820766E-11,1.455192E-11,3.637979E-12,9.094947E-13]
+
+        Im1D=len(Finp)
+        order2=int(np.fix(order/2))
+
+        cor=[0 for i in range(Im1D)]
+        Fcor=[0 for i in range(Im1D)]
+
+        #----------------------------------------------------------------------------
+        # Compute filter correction.
+        #----------------------------------------------------------------------------
+
+        if (scheme == 1):
+           # Scheme 1:  constant order and no change at wall.
+
+           # Filter loop
+          for n in range (1,order2+1):
+
+            # Set the bdy
+            if (n != order2):
+              cor[0]=2.0*(Finp[0]-Finp[1])
+              cor[Im1D-1]=2.0*(Finp[Im1D-1]-Finp[Im1D-2])
+            else:
+              cor[0]=0.0
+              cor[Im1D-1]=0.0
+
+            # Set all the other
+            cor[1:Im1D-2]=2.0*Finp[1:Im1D-2] - Finp[0:Im1D-3] - Finp[2:Im1D-1]
+
+          coeff_to_apply=float(fourk[order2-1])
+          #print ('Shapiro coeff. ',coeff_to_apply)
+          Fcor=np.array(cor)*coeff_to_apply
+
+        else:
+          print ('Not yet implemented..')
+
+        #----------------------------------------------------------------------------
+        # Apply correction.
+        #----------------------------------------------------------------------------
+
+        Fout=Finp-Fcor
+
+        return Fout
+
+# 2D Filtering of the field
+Fout=h_rms
+   for n in range (1,napp_hk+1):
+      print(n,'^ application of the Shapiro filter ongoing..')
+
+      # ----------------------------------------------------------------------------
+      #  Filter all rows.
+	# ----------------------------------------------------------------------------
+	print ('I am going to filter the rows..')
+      for j in range (0,Im):
+          #print ('Filtering row num: ',j)
+          Fraw=np.squeeze(h_rms[:,j])
+          # Run Shapiro 1D
+          Fwrk=shapiro1D(Fraw,order_hk,scheme_hk)
+          Fout[:,j]=Fwrk
+          #print ('row Done!')
+
+      # ----------------------------------------------------------------------------
+      #  Filter all columns.
+      # ----------------------------------------------------------------------------
+      print ('I am going to filter the columns..')
+      for i in range (0,Jm):
+          #print ('Filtering col num: ',i)
+          Fraw=np.squeeze(Fout[i,:])
+          # Run Shapiro 1D
+          Fwrk=shapiro1D(Fraw,order,scheme)
+          Fout[i,:]=Fwrk
+          #print ('row Done!')
+
+      h_rms=Fout
+
+Fout=K_bar
+   for n in range (1,napp_hk+1):
+      print(n,'^ application of the Shapiro filter ongoing..')
+
+      # ----------------------------------------------------------------------------
+      #  Filter all rows.
+        # ----------------------------------------------------------------------------
+        print ('I am going to filter the rows..')
+      for j in range (0,Im):
+          #print ('Filtering row num: ',j)
+          Fraw=np.squeeze(K_bar[:,j])
+          # Run Shapiro 1D
+          Fwrk=shapiro1D(Fraw,order_hk,scheme_hk)
+          Fout[:,j]=Fwrk
+          #print ('row Done!')
+
+      # ----------------------------------------------------------------------------
+      #  Filter all columns.
+      # ----------------------------------------------------------------------------
+      print ('I am going to filter the columns..')
+      for i in range (0,Jm):
+          #print ('Filtering col num: ',i)
+          Fraw=np.squeeze(Fout[i,:])
+          # Run Shapiro 1D
+          Fwrk=shapiro1D(Fraw,order,scheme)
+          Fout[i,:]=Fwrk
+          #print ('row Done!')
+
+      K_bar=Fout
+
+
+# ------------------------------------
 # Add the outfields in the outfile_eas
 if flag_eas_vars_save :
 
