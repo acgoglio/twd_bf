@@ -267,15 +267,16 @@ def shapiro1D(Finp,order,scheme):
         return Fout
 
 # 2D Filtering of the field
+# hrms
 Fout=h_rms
-   for n in range (1,napp_hk+1):
+for n in range (1,napp_hk+1):
       print(n,'^ application of the Shapiro filter ongoing..')
 
       # ----------------------------------------------------------------------------
       #  Filter all rows.
-	# ----------------------------------------------------------------------------
-	print ('I am going to filter the rows..')
-      for j in range (0,Im):
+      # ----------------------------------------------------------------------------
+      print ('I am going to filter the rows..')
+      for j in range (0,NY):
           #print ('Filtering row num: ',j)
           Fraw=np.squeeze(h_rms[:,j])
           # Run Shapiro 1D
@@ -287,7 +288,7 @@ Fout=h_rms
       #  Filter all columns.
       # ----------------------------------------------------------------------------
       print ('I am going to filter the columns..')
-      for i in range (0,Jm):
+      for i in range (0,NX):
           #print ('Filtering col num: ',i)
           Fraw=np.squeeze(Fout[i,:])
           # Run Shapiro 1D
@@ -297,15 +298,16 @@ Fout=h_rms
 
       h_rms=Fout
 
+# Kbar
 Fout=K_bar
-   for n in range (1,napp_hk+1):
+for n in range (1,napp_hk+1):
       print(n,'^ application of the Shapiro filter ongoing..')
 
       # ----------------------------------------------------------------------------
       #  Filter all rows.
-        # ----------------------------------------------------------------------------
-        print ('I am going to filter the rows..')
-      for j in range (0,Im):
+      # ----------------------------------------------------------------------------
+      print ('I am going to filter the rows..')
+      for j in range (0,NY):
           #print ('Filtering row num: ',j)
           Fraw=np.squeeze(K_bar[:,j])
           # Run Shapiro 1D
@@ -317,7 +319,7 @@ Fout=K_bar
       #  Filter all columns.
       # ----------------------------------------------------------------------------
       print ('I am going to filter the columns..')
-      for i in range (0,Jm):
+      for i in range (0,NX):
           #print ('Filtering col num: ',i)
           Fraw=np.squeeze(Fout[i,:])
           # Run Shapiro 1D
