@@ -276,7 +276,7 @@ for n in range (1,napp_hk+1):
       #  Filter all rows.
       # ----------------------------------------------------------------------------
       print ('I am going to filter the rows..')
-      for j in range (0,NY):
+      for j in range (0,NX):
           #print ('Filtering row num: ',j)
           Fraw=np.squeeze(h_rms[:,j])
           # Run Shapiro 1D
@@ -288,11 +288,11 @@ for n in range (1,napp_hk+1):
       #  Filter all columns.
       # ----------------------------------------------------------------------------
       print ('I am going to filter the columns..')
-      for i in range (0,NX):
+      for i in range (0,NY):
           #print ('Filtering col num: ',i)
           Fraw=np.squeeze(Fout[i,:])
           # Run Shapiro 1D
-          Fwrk=shapiro1D(Fraw,order,scheme)
+          Fwrk=shapiro1D(Fraw,order_hk,scheme_hk)
           Fout[i,:]=Fwrk
           #print ('row Done!')
 
@@ -307,7 +307,7 @@ for n in range (1,napp_hk+1):
       #  Filter all rows.
       # ----------------------------------------------------------------------------
       print ('I am going to filter the rows..')
-      for j in range (0,NY):
+      for j in range (0,NX):
           #print ('Filtering row num: ',j)
           Fraw=np.squeeze(K_bar[:,j])
           # Run Shapiro 1D
@@ -319,11 +319,11 @@ for n in range (1,napp_hk+1):
       #  Filter all columns.
       # ----------------------------------------------------------------------------
       print ('I am going to filter the columns..')
-      for i in range (0,NX):
+      for i in range (0,NY):
           #print ('Filtering col num: ',i)
           Fraw=np.squeeze(Fout[i,:])
           # Run Shapiro 1D
-          Fwrk=shapiro1D(Fraw,order,scheme)
+          Fwrk=shapiro1D(Fraw,order_hk,scheme_hk)
           Fout[i,:]=Fwrk
           #print ('row Done!')
 
@@ -391,7 +391,7 @@ if flag_outfield_plot :
       print('Creating: [%s]' %figdir)
       os.makedirs(figdir)
 
-   figname = figdir +'map_med_hrms.png'
+   figname = figdir +'map_med_hrms_'+str(boxdim)+'x'+str(boxdim)+'_'+str(napp_hk)+'.png'
    figtitle = 'HRMS'
    cmap        = 'viridis' #plt.cm.gist_heat_r   # Colormap
    [cmin,cmax] = [0,80]       # color min and max values
@@ -429,7 +429,7 @@ if flag_outfield_plot :
       print('Creating: [%s]' %figdir)
       os.makedirs(figdir)
 
-   figname = figdir +'map_med_kbar.png'
+   figname = figdir +'map_med_kbar_'+str(boxdim)+'x'+str(boxdim)+'_'+str(napp_hk)+'.png'
    figtitle = 'Kbar'
    cmap        = 'magma' #plt.cm.gist_heat_r   # Colormap
    [cmin,cmax] = [0,0.0008]       # color min and max values
