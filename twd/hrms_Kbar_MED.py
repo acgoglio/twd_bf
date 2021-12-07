@@ -456,4 +456,40 @@ if flag_outfield_plot :
    plt.savefig(figname, dpi=500, bbox_inches='tight')
    plt.close('all')
 
+  # PLOT LAMBDA_BAR from KBAR
+   VAR = np.where(kbar_out!=0,2*np.pi/kbar_out,20000)
+   LAND=inbathymetry
+   VARunit = 'm'
+   VAR = np.ma.masked_invalid(VAR)
 
+   figdir  = workdir+'/plots/'
+   if not(os.path.isdir(figdir)) :
+      print('Creating: [%s]' %figdir)
+      os.makedirs(figdir)
+
+   figname = figdir +'map_med_lbar_'+str(boxdim)+'x'+str(boxdim)+'_'+str(napp_hk)+'.png'
+   figtitle = 'Lbar'
+   cmap        = 'cividis' #plt.cm.gist_heat_r   # Colormap
+   [cmin,cmax] = [0,20000]       # color min and max values
+
+   print('... make the plot ...')
+   plt.figure()
+   plt.rc('font', size=8)
+   plt.rcParams['lines.linewidth'] = 0.3
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
+   x, y = m(nav_lon, nav_lat)
+   fig = m.pcolor(x,y,VAR, cmap=cmap, vmin=cmin, vmax=cmax)
+   #fig = m.contourf(x,y,VAR, levels=[-9.0,-7.0,-5.0,-3.0,-1.0,1.0,3.0,5.0,7.0,9.0] ,cmap=cmap, extend='both') # levels=[-90,-70,-50,-30,-10,10,30,50,70,90]
+   pcf  = plt.contourf(x,y,LAND, levels=[0.000,15.0], colors='dimgray')
+   pc    = plt.contour(x,y,LAND, levels=[15.0], colors='black',linewidth=0.3)
+   plt.title( figtitle, fontsize='8')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='max')
+   cbar.set_label('Lambda_bar [m]',fontsize='8')
+   cbar.ax.tick_params(labelsize='8')
+   cbar.formatter.set_powerlimits((0, 0))
+
+   print ('Saving: [%s]' % figname)
+   plt.savefig(figname, dpi=500, bbox_inches='tight')
+   plt.close('all')

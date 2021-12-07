@@ -39,6 +39,9 @@ order=int(sys.argv[13]) # Order of the Shapiro filter
 napp=int(sys.argv[14]) # Number of Shapiro filter applications
 scheme=int(sys.argv[15]) # type of boundary scheme to use ( only option 1 implemented = No change at wall, constant order )  
 
+hk_outfile=str(sys.argv[16]) # File storing hrms and kbar for the TWD coeff plot
+out_hrms_name=str(sys.argv[17]) # hrms field name in both outfile
+out_kbar_name=str(sys.argv[18]) # kbar field name in both outfile
 
 # --- SET PARAMETERS
 
@@ -303,7 +306,7 @@ if flag_plot_shap :
    lon_max=np.max(nav_lon[0,:])
    nav_lon = np.ma.masked_invalid(nav_lon)
    
-   # --- PLOT
+   # --- PLOT Bottom Brunt Vaisal freq.
    VAR = bnbot
    VARunit = r'[$s^{-1}$]'
    VAR = np.ma.masked_invalid(VAR)
@@ -334,6 +337,93 @@ if flag_plot_shap :
    cbar.set_label(VARunit,fontsize='14')
    cbar.ax.tick_params(labelsize='12')
    
+   print ('Saving: [%s]' % figname)
+   plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
+   plt.close('all')
+
+   # --- PLOT Weighting Function
+   f_cor = 0.0001 # s-1 Coriolis param
+   Omega = 14051.89 # s-1 M2 angular frequency 
+
+   W_fun = np.sqrt((bnbot*bnbot-Omega*Omega)-(Omega*Omega-f_cor*f_cor))/(bnbot*Omega)
+   VAR = W_fun
+   VARunit = ''
+   VAR = np.ma.masked_invalid(VAR)
+   VAR=VAR*tmask[0,:,:]
+
+   k = 0
+   figname = figdir +'map_weightingF.png'
+   figtitle = 'Weighting Function (M2 tidal component)'
+   #cmap        = cm.get_cmap('bone_r') 
+   #cmap        = cm.get_cmap('twilight')
+   cmap        = cm.get_cmap('bone')
+   [cmin,cmax] = [0.0,1.0]
+   print('... make the plot ...')
+   plt.figure()
+   plt.rcParams['lines.linewidth'] = 0.3
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
+   x, y = m(nav_lon, nav_lat)
+   fig = m.pcolor(x,y,VAR, cmap=cmap, norm=colors.LogNorm(vmin=cmin, vmax=cmax) ) # [0.00001,0.00005,0.0001,0.0005,0.001,0.005,0.01,0.05,0.1,0.5,1.0]
+   #lvls = np.logspace(-5,-1,5,endpoint=True) # levels=[0.0001,0.0005,0.001,0.005,0.01,0.05,0.1]
+   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='both' ) 
+   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
+   pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
+   pc    = plt.contour(x,y,bathy, levels=[15.0], colors='black',linewidth=0.3)
+   plt.title( figtitle, fontsize='18')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
+   cbar.set_label(VARunit,fontsize='14')
+   cbar.ax.tick_params(labelsize='12')
+
+   print ('Saving: [%s]' % figname)
+   plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
+   plt.close('all')
+
+   # --- PLOT TWD Coeff
+
+
+   # Input file path/name
+
+   nc2open=hk_outfile
+   print ('I am going to open and plot the following file: ',nc2open)
+   bathy_infield = Dataset(nc2open,'r')
+
+   hrms=bathy_infield.variables[out_hrms_name][:]
+   kbar=bathy_infield.variables[out_kbar_name][:]
+
+   bathy_infield.close()
+
+   #
+   TWD_coeff = 0.5*bnbot*(hrms*hrms)*kbar*W_fun
+   VAR = TWD_coeff
+   VARunit = 'm/2'
+   VAR = np.ma.masked_invalid(VAR)
+   VAR=VAR*tmask[0,:,:]
+
+   k = 0
+   figname = figdir +'map_TWDcoeff.png'
+   figtitle = 'TWD coeff (M2 tidal component)'
+   cmap        = cm.get_cmap('jet')
+   [cmin,cmax] = [0.0,0.025]
+   print('... make the plot ...')
+   plt.figure()
+   plt.rcParams['lines.linewidth'] = 0.3
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
+   x, y = m(nav_lon, nav_lat)
+   fig = m.pcolor(x,y,VAR, cmap=cmap, norm=colors.LogNorm(vmin=cmin, vmax=cmax) ) # [0.00001,0.00005,0.0001,0.0005,0.001,0.005,0.01,0.05,0.1,0.5,1.0]
+   #lvls = np.logspace(-5,-1,5,endpoint=True) # levels=[0.0001,0.0005,0.001,0.005,0.01,0.05,0.1]
+   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='both' ) 
+   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
+   pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
+   pc    = plt.contour(x,y,bathy, levels=[15.0], colors='black',linewidth=0.3)
+   plt.title( figtitle, fontsize='18')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
+   cbar.set_label(VARunit,fontsize='14')
+   cbar.ax.tick_params(labelsize='12')
+
    print ('Saving: [%s]' % figname)
    plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
    plt.close('all')
