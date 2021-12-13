@@ -49,7 +49,8 @@ scheme_hk=int(sys.argv[16]) # type of boundary scheme to use ( only option 1 imp
 
 # --- SET PARAMETERS
 
-flag_eas_vars_save = True
+flag_compute_hk = False
+flag_eas_vars_save = False
 flag_outfield_plot = True
 
 # set FIGURE info
@@ -114,101 +115,102 @@ area_cell = e1t * e2t
 print ('... mesh created. (NX,NY)=', NX,NY,'area cell= ',area_cell)
 
 #    CALC : as Shakespeare et al (2020) 
-# ----------
-# prepare variables
-Npts  = boxdim*resol
-mid   = Npts // 2
-h_rms = np.empty(shape=(NY,NX))
-K_bar = np.empty(shape=(NY,NX))
-msk   = np.ones(shape=(NY,NX))
-msk[bathy<=0.] = 0.
-TM2 = 12.42 # hours, M2 tidal period
-rad = np.pi / 180.0  # conversion from degree into radians
-
-# MAIN CALC
-print ('Start computation :')
-print ('Compute running mean over '+str(boxdim)+'x'+str(boxdim)+' deg boxes with steps of 1 grid point ...')
-start = time.time()
-
-for ji in range(0,NX):
-   #print ('Running index: ',ji)
-   # define different x-position ranges to compose boxes near boundaries
-   # Left bdy:
-   if ji<mid :
-      [xa,xb]    = [0, ji+mid+(mid-ji)]
-   # Internal 
-   elif ji>=mid and ji<(NX-1-mid) :
-      [xa,xb]    = [ji-mid, ji+mid]
-   # Right bdy:
-   elif ji>=(NX-1-mid) :
-      [xa,xb]    = [ji-mid+(ji-(NX-mid-1)), NX-1]
-
-   # compute only lats with f<M2freq (higher are not used in wave drag parametrization)
-   for jj in range(0,NY) :
-      #print ('Running indexes: ',ji,jj)
-      # define different y-position ranges to compose boxes near boundaries
-      # Lower bdy:
-      if jj<mid :
-         [ya,yb] = [0, jj+mid+(mid-jj)]
-      # Internal
-      elif jj>=mid and jj<(NY-1-mid) : 
-         [ya,yb] = [jj-mid, jj+mid] 
-      # Upper bdy:
-      elif jj>=(NY-1-mid) :
-         [ya,yb] = [jj-mid-(jj+mid-(NY-1)), NY-1]
-
-      # cut the box mask
-      msk_b = msk[ya:yb,xa:xb]
-
-      # check ocean presence, box has AT LEAST ONE point 
-      if np.nansum(msk_b)>0 :  
-         # cut matricex boxes
-         Area = area_cell[ya:yb,xa:xb]
-         h    = rough[ya:yb,xa:xb]
-         dx   = e1t[ya:yb,xa:xb]
-         dy   = e2t[ya:yb,xa:xb]
-         Area = np.sum(Area,axis=(0,1)) # working with FT all points are considered even if they are dry!
-         [Nyb,Nxb] = h.shape
-
-         # calc mean dx and dy: we approximate them as const to compute FFT
-         dx = np.average(dx, axis=(0,1))
-         dy = np.average(dy, axis=(0,1))
-         # calc FFT
-         hhat  = np.fft.fft2(h)
-         hhat  = hhat*dx*dy   # to have correct dim
-         hhat2 = np.power(np.absolute(hhat),2)
-         # calc (k,l) wavenumber
-         fac = 2*np.pi
-         k1d = np.fft.fftfreq(Nxb,d=dx) * fac
-         l1d = np.fft.fftfreq(Nyb,d=dy) * fac
-         dk  = np.abs(k1d[1]-k1d[0])
-         dl  = np.abs(l1d[1]-l1d[0])
-         [k,l] = np.asarray(np.meshgrid(k1d,l1d)) 
-         Kmod  = np.sqrt(k**2+l**2)
-         # calc h_rms
-         integ  = np.sum( hhat2*dk*dl ,axis=(0,1)) # integral
-         frac   = 4*Area*(np.pi)**2
-         #print ('integ and frac',integ,frac)
-         hrms_b = np.sqrt( integ/frac )
-         #print ('hrms ',hrms_b)
-         # calc K_bar
-         if hrms_b != 0. :
-            integ  = np.sum( Kmod*hhat2*dk*dl ,axis=(0,1))
-            frac   = 4*Area*(np.pi*hrms_b)**2
+if flag_compute_hk:
+   # ----------
+   # prepare variables
+   Npts  = boxdim*resol
+   mid   = Npts // 2
+   h_rms = np.empty(shape=(NY,NX))
+   K_bar = np.empty(shape=(NY,NX))
+   msk   = np.ones(shape=(NY,NX))
+   msk[bathy<=0.] = 0.
+   TM2 = 12.42 # hours, M2 tidal period
+   rad = np.pi / 180.0  # conversion from degree into radians
+   
+   # MAIN CALC
+   print ('Start computation :')
+   print ('Compute running mean over '+str(boxdim)+'x'+str(boxdim)+' deg boxes with steps of 1 grid point ...')
+   start = time.time()
+   
+   for ji in range(0,NX):
+      #print ('Running index: ',ji)
+      # define different x-position ranges to compose boxes near boundaries
+      # Left bdy:
+      if ji<mid :
+         [xa,xb]    = [0, ji+mid+(mid-ji)]
+      # Internal 
+      elif ji>=mid and ji<(NX-1-mid) :
+         [xa,xb]    = [ji-mid, ji+mid]
+      # Right bdy:
+      elif ji>=(NX-1-mid) :
+         [xa,xb]    = [ji-mid+(ji-(NX-mid-1)), NX-1]
+   
+      # compute only lats with f<M2freq (higher are not used in wave drag parametrization)
+      for jj in range(0,NY) :
+         #print ('Running indexes: ',ji,jj)
+         # define different y-position ranges to compose boxes near boundaries
+         # Lower bdy:
+         if jj<mid :
+            [ya,yb] = [0, jj+mid+(mid-jj)]
+         # Internal
+         elif jj>=mid and jj<(NY-1-mid) : 
+            [ya,yb] = [jj-mid, jj+mid] 
+         # Upper bdy:
+         elif jj>=(NY-1-mid) :
+            [ya,yb] = [jj-mid-(jj+mid-(NY-1)), NY-1]
+   
+         # cut the box mask
+         msk_b = msk[ya:yb,xa:xb]
+   
+         # check ocean presence, box has AT LEAST ONE point 
+         if np.nansum(msk_b)>0 :  
+            # cut matricex boxes
+            Area = area_cell[ya:yb,xa:xb]
+            h    = rough[ya:yb,xa:xb]
+            dx   = e1t[ya:yb,xa:xb]
+            dy   = e2t[ya:yb,xa:xb]
+            Area = np.sum(Area,axis=(0,1)) # working with FT all points are considered even if they are dry!
+            [Nyb,Nxb] = h.shape
+   
+            # calc mean dx and dy: we approximate them as const to compute FFT
+            dx = np.average(dx, axis=(0,1))
+            dy = np.average(dy, axis=(0,1))
+            # calc FFT
+            hhat  = np.fft.fft2(h)
+            hhat  = hhat*dx*dy   # to have correct dim
+            hhat2 = np.power(np.absolute(hhat),2)
+            # calc (k,l) wavenumber
+            fac = 2*np.pi
+            k1d = np.fft.fftfreq(Nxb,d=dx) * fac
+            l1d = np.fft.fftfreq(Nyb,d=dy) * fac
+            dk  = np.abs(k1d[1]-k1d[0])
+            dl  = np.abs(l1d[1]-l1d[0])
+            [k,l] = np.asarray(np.meshgrid(k1d,l1d)) 
+            Kmod  = np.sqrt(k**2+l**2)
+            # calc h_rms
+            integ  = np.sum( hhat2*dk*dl ,axis=(0,1)) # integral
+            frac   = 4*Area*(np.pi)**2
             #print ('integ and frac',integ,frac)
-            Kbar_b = integ/frac
-         else:
+            hrms_b = np.sqrt( integ/frac )
+            #print ('hrms ',hrms_b)
+            # calc K_bar
+            if hrms_b != 0. :
+               integ  = np.sum( Kmod*hhat2*dk*dl ,axis=(0,1))
+               frac   = 4*Area*(np.pi*hrms_b)**2
+               #print ('integ and frac',integ,frac)
+               Kbar_b = integ/frac
+            else:
+               Kbar_b = 0.
+            #print ('Kbar_b ',Kbar_b) 
+         else :
+            #print ('CASE: np.nansum(msk_b)<=0')
+            hrms_b = 0.
             Kbar_b = 0.
-         #print ('Kbar_b ',Kbar_b) 
-      else :
-         #print ('CASE: np.nansum(msk_b)<=0')
-         hrms_b = 0.
-         Kbar_b = 0.
-      h_rms[jj,ji] = hrms_b
-      K_bar[jj,ji] = Kbar_b
-print ('... computation done.')
-end = time.time()
-print(end-start)
+         h_rms[jj,ji] = hrms_b
+         K_bar[jj,ji] = Kbar_b
+   print ('... computation done.')
+   end = time.time()
+   print(end-start)
 
 # -----------------------------------------------
 # Define the Shapiro filter and smooth the fields
@@ -267,67 +269,68 @@ def shapiro1D(Finp,order,scheme):
         return Fout
 
 # 2D Filtering of the field
-# hrms
-Fout=h_rms
-for n in range (1,napp_hk+1):
-      print(n,'^ application of the Shapiro filter ongoing..')
-
-      # ----------------------------------------------------------------------------
-      #  Filter all rows.
-      # ----------------------------------------------------------------------------
-      print ('I am going to filter the rows..')
-      for j in range (0,NX):
-          #print ('Filtering row num: ',j)
-          Fraw=np.squeeze(h_rms[:,j])
-          # Run Shapiro 1D
-          Fwrk=shapiro1D(Fraw,order_hk,scheme_hk)
-          Fout[:,j]=Fwrk
-          #print ('row Done!')
-
-      # ----------------------------------------------------------------------------
-      #  Filter all columns.
-      # ----------------------------------------------------------------------------
-      print ('I am going to filter the columns..')
-      for i in range (0,NY):
-          #print ('Filtering col num: ',i)
-          Fraw=np.squeeze(Fout[i,:])
-          # Run Shapiro 1D
-          Fwrk=shapiro1D(Fraw,order_hk,scheme_hk)
-          Fout[i,:]=Fwrk
-          #print ('row Done!')
-
-      h_rms=Fout
-
-# Kbar
-Fout=K_bar
-for n in range (1,napp_hk+1):
-      print(n,'^ application of the Shapiro filter ongoing..')
-
-      # ----------------------------------------------------------------------------
-      #  Filter all rows.
-      # ----------------------------------------------------------------------------
-      print ('I am going to filter the rows..')
-      for j in range (0,NX):
-          #print ('Filtering row num: ',j)
-          Fraw=np.squeeze(K_bar[:,j])
-          # Run Shapiro 1D
-          Fwrk=shapiro1D(Fraw,order_hk,scheme_hk)
-          Fout[:,j]=Fwrk
-          #print ('row Done!')
-
-      # ----------------------------------------------------------------------------
-      #  Filter all columns.
-      # ----------------------------------------------------------------------------
-      print ('I am going to filter the columns..')
-      for i in range (0,NY):
-          #print ('Filtering col num: ',i)
-          Fraw=np.squeeze(Fout[i,:])
-          # Run Shapiro 1D
-          Fwrk=shapiro1D(Fraw,order_hk,scheme_hk)
-          Fout[i,:]=Fwrk
-          #print ('row Done!')
-
-      K_bar=Fout
+if flag_compute_hk:
+   # hrms
+   Fout=h_rms
+   for n in range (1,napp_hk+1):
+         print(n,'^ application of the Shapiro filter ongoing..')
+   
+         # ----------------------------------------------------------------------------
+         #  Filter all rows.
+         # ----------------------------------------------------------------------------
+         print ('I am going to filter the rows..')
+         for j in range (0,NX):
+             #print ('Filtering row num: ',j)
+             Fraw=np.squeeze(h_rms[:,j])
+             # Run Shapiro 1D
+             Fwrk=shapiro1D(Fraw,order_hk,scheme_hk)
+             Fout[:,j]=Fwrk
+             #print ('row Done!')
+   
+         # ----------------------------------------------------------------------------
+         #  Filter all columns.
+         # ----------------------------------------------------------------------------
+         print ('I am going to filter the columns..')
+         for i in range (0,NY):
+             #print ('Filtering col num: ',i)
+             Fraw=np.squeeze(Fout[i,:])
+             # Run Shapiro 1D
+             Fwrk=shapiro1D(Fraw,order_hk,scheme_hk)
+             Fout[i,:]=Fwrk
+             #print ('row Done!')
+   
+         h_rms=Fout
+   
+   # Kbar
+   Fout=K_bar
+   for n in range (1,napp_hk+1):
+         print(n,'^ application of the Shapiro filter ongoing..')
+   
+         # ----------------------------------------------------------------------------
+         #  Filter all rows.
+         # ----------------------------------------------------------------------------
+         print ('I am going to filter the rows..')
+         for j in range (0,NX):
+             #print ('Filtering row num: ',j)
+             Fraw=np.squeeze(K_bar[:,j])
+             # Run Shapiro 1D
+             Fwrk=shapiro1D(Fraw,order_hk,scheme_hk)
+             Fout[:,j]=Fwrk
+             #print ('row Done!')
+   
+         # ----------------------------------------------------------------------------
+         #  Filter all columns.
+         # ----------------------------------------------------------------------------
+         print ('I am going to filter the columns..')
+         for i in range (0,NY):
+             #print ('Filtering col num: ',i)
+             Fraw=np.squeeze(Fout[i,:])
+             # Run Shapiro 1D
+             Fwrk=shapiro1D(Fraw,order_hk,scheme_hk)
+             Fout[i,:]=Fwrk
+             #print ('row Done!')
+   
+         K_bar=Fout
 
 
 # ------------------------------------
@@ -480,7 +483,8 @@ if flag_outfield_plot :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   fig = m.pcolor(x,y,VAR, cmap=cmap, vmin=cmin, vmax=cmax)
+   #fig = m.pcolor(x,y,VAR, cmap=cmap, vmin=cmin, vmax=cmax)
+   fig = m.contourf(x,y,VAR,cmap=cmap,vmin=cmin,vmax=cmax,extend='max')
    #fig = m.contourf(x,y,VAR, levels=[-9.0,-7.0,-5.0,-3.0,-1.0,1.0,3.0,5.0,7.0,9.0] ,cmap=cmap, extend='both') # levels=[-90,-70,-50,-30,-10,10,30,50,70,90]
    pcf  = plt.contourf(x,y,LAND, levels=[0.000,15.0], colors='dimgray')
    pc    = plt.contour(x,y,LAND, levels=[15.0], colors='black',linewidth=0.3)
