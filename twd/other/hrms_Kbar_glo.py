@@ -2,13 +2,20 @@
 Written by Federica Borile , Apr 2021
 Modified by AC Goglio , Nov 2021
 '''
-# HOW TO RUN this script: 
+# HOW TO RUN this script:
+# if you want to compute Hrms and Kbar from Fede's h: 
 # cdo selindexbox,9850,13194,7033,8676 /work/oda/fb31416/GEBCO/roughness_GEBCO_GRIDONE_shapiro200iter.nc /data/oda/ag15419/BATHY/glo_roughness.nc
 # cdo selindexbox,9850,13194,7033,8676 /work/oda/fb31416/GEBCO/GRIDONE_2D.nc /data/oda/ag15419/BATHY/glo_bathymetry_cut.nc
 # cp  /data/oda/ag15419/BATHY/glo_roughness.nc /work/oda/ag15419/tests/twd_bf/execution/work/glo_hk_roughness.nc 
-# nohup python hrms_Kbar_glo.py /work/oda/ag15419/tests/twd_bf//execution/work /data/oda/ag15419/BATHY/glo_roughness.nc  glo_hrma_temp_ glo_kbar_temp_ bathy_smooth roughness lat lon glo_h_rms glo_K_bar glo_hk_roughness.nc 4 5 2 0 1 /data/oda/ag15419/BATHY/glo_bathymetry_cut.nc elevation &
+# python hrms_Kbar_glo.py /work/oda/ag15419/tests/twd_bf//execution/work /data/oda/ag15419/BATHY/glo_roughness.nc glo_hrma_temp_ glo_kbar_temp_ bathy_smooth roughness lat lon glo_h_rms glo_K_bar glo_hk_roughness.nc 60 5 2 0 1 /data/oda/ag15419/BATHY/glo_bathymetry_cut.nc elevation
 #
-print ("\n $$$--- CALC h_rms and Kbar interpolated from GEBCO bathymetry to MED grid ---$$$ ")
+# if you want to plot Fede's Hrms and Kbar 
+# cdo selindexbox,9850,13194,7033,8676 /work/oda/fb31416/script_python/data/data_Shakespeare2020/TWD_input_DEF/hrms_kbar_FFT_gebco1_shap200it_runbox5_step1point.nc /data/oda/ag15419/BATHY/glo_hk.nc
+# cp /data/oda/ag15419/BATHY/glo_hk.nc /work/oda/ag15419/tests/twd_bf//execution/work/
+# cdo merge /data/oda/ag15419/BATHY/glo_hk.nc /data/oda/ag15419/BATHY/glo_bathymetry_cut.nc /data/oda/ag15419/BATHY/glo_hk_bathy.nc  
+# cp /data/oda/ag15419/BATHY/glo_hk_bathy.nc /work/oda/ag15419/tests/twd_bf//execution/work/
+# python hrms_Kbar_glo.py /work/oda/ag15419/tests/twd_bf//execution/work /data/oda/ag15419/BATHY/glo_roughness.nc glo_hrma_temp_ glo_kbar_temp_ elevation roughness lat lon h_rms K_bar glo_hk_bathy.nc 60 5 2 30 1 /data/oda/ag15419/BATHY/glo_bathymetry_cut.nc elevation
+print ("\n $$$--- CALC and or PLOT h_rms and Kbar interpolated from GEBCO bathymetry to MED grid ---$$$ ")
 
 ###############
 import datetime
@@ -58,6 +65,7 @@ mesh_field=str(sys.argv[18])
 
 flag_eas_vars_save = False
 flag_outfield_plot = True
+flag_outfield_plotF = False
 
 # set FIGURE info
 figdir  = workdir+'/plots/'
@@ -480,4 +488,125 @@ if flag_outfield_plot :
    plt.savefig(figname, dpi=500, bbox_inches='tight')
    plt.close('all')
 
+
+# Plot the output fields
+if flag_outfield_plotF :
+
+   # Input file path/name
+   nc2open=outfile
+
+   print ('I am going to open and plot the following file: ',nc2open)
+
+   bathy_infield = Dataset(nc2open,'r')
+
+   hrms_out=bathy_infield.variables[out_hrms_name][:]
+   kbar_out=bathy_infield.variables[out_kbar_name][:]
+   inbathymetry=bathy_infield.variables[bathy_inname][:]
+
+   bathy_infield.close()
+
+   # Read GEBCO bathymetry file
+   fnm = mesh_file
+   print ('Reading: [%s]' %fnm)
+   ncf = Dataset(fnm,mode='r')
+   lat   = ncf.variables[bathy_inlat][:]        ; lat = np.squeeze(lat)    # Y-axis
+   lon   = ncf.variables[bathy_inlon][:]        ; lon = np.squeeze(lon)    # X-axis
+   ncf.close()
+
+   # Read GEBCO roughness file
+   fn = bathy_infile
+   print ('Reading: [%s]' %fn)
+   ncf = Dataset(fn,mode='r')
+   rough = ncf.variables[bathy_rough][:] ; rough = np.squeeze(rough)
+   ncf.close()
+
+   # Compute the  mesh
+   print ('Create the mesh ...')
+   [NY,NX]    = rough.shape
+   [nav_lon,nav_lat] = np.asarray(np.meshgrid(lon,lat))
+
+   # Area
+   # Mask variables
+   nav_lat = np.ma.masked_invalid(nav_lat)
+   lat_min=np.min(nav_lat[:,0])
+   lat_max=np.max(nav_lat[:,0])
+   lon_min=np.min(nav_lon[0,:])
+   lon_max=np.max(nav_lon[0,:])
+   nav_lon = np.ma.masked_invalid(nav_lon)
+
+   # PLOT HRMS
+   VAR = hrms_out
+   LAND=inbathymetry
+   VARunit = 'm'
+   VAR = np.ma.masked_invalid(VAR)
+
+   figdir  = workdir+'/plots/'
+   if not(os.path.isdir(figdir)) :
+      print('Creating: [%s]' %figdir)
+      os.makedirs(figdir)
+
+   figname = figdir +'map_gloF_hrms_'+str(boxdim)+'x'+str(boxdim)+'_'+str(napp_hk)+'.png'
+   figtitle = 'HRMS'
+   cmap        = 'viridis' #plt.cm.gist_heat_r   # Colormap
+   [cmin,cmax] = [0,500]       # color min and max values
+
+   print('... make the plot ...')
+   plt.figure()
+   plt.rc('font', size=10)
+   plt.rcParams['lines.linewidth'] = 0.3
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
+   x, y = m(nav_lon, nav_lat)
+   fig = m.pcolor(x,y,VAR, cmap=cmap, vmin=cmin, vmax=cmax)
+   #fig = m.contourf(x,y,VAR, levels=[-90,-70,-50,-30,-10,10,30,50,70,90] ,cmap=cmap, extend='both') # levels=[-90,-70,-50,-30,-10,10,30,50,70,90]
+   pcf  = plt.contourf(x,y,LAND, levels=[-15.0,5000], colors='dimgray')
+   pc    = plt.contour(x,y,LAND, levels=[-15.0], colors='black',linewidth=0.3)
+   plt.title( figtitle, fontsize='8')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='max')
+   cbar.set_label('hrms ['+VARunit+']',fontsize='8')
+   cbar.ax.tick_params(labelsize='8')
+   cbar.formatter.set_powerlimits((0, 0))
+
+   print ('Saving: [%s]' % figname)
+   plt.savefig(figname, dpi=500, bbox_inches='tight')
+   plt.close('all')
+
+   # PLOT KBAR
+   VAR = kbar_out
+   LAND=inbathymetry
+   VARunit = 'm-1'
+   VAR = np.ma.masked_invalid(VAR)
+
+   figdir  = workdir+'/plots/'
+   if not(os.path.isdir(figdir)) :
+      print('Creating: [%s]' %figdir)
+      os.makedirs(figdir)
+
+   figname = figdir +'map_gloF_kbar_'+str(boxdim)+'x'+str(boxdim)+'_'+str(napp_hk)+'.png'
+   figtitle = 'Kbar'
+   cmap        = 'magma' #plt.cm.gist_heat_r   # Colormap
+   [cmin,cmax] = [0,0.0003]       # color min and max values
+
+   print('... make the plot ...')
+   plt.figure()
+   plt.rc('font', size=8)
+   plt.rcParams['lines.linewidth'] = 0.3
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
+   x, y = m(nav_lon, nav_lat)
+   fig = m.pcolor(x,y,VAR, cmap=cmap, vmin=cmin, vmax=cmax)
+   #fig = m.contourf(x,y,VAR, levels=[-9.0,-7.0,-5.0,-3.0,-1.0,1.0,3.0,5.0,7.0,9.0] ,cmap=cmap, extend='both') # levels=[-90,-70,-50,-30,-10,10,30,50,70,90]
+   pcf  = plt.contourf(x,y,LAND, levels=[-15.0,5000], colors='dimgray')
+   pc    = plt.contour(x,y,LAND, levels=[-15.0], colors='black',linewidth=0.3)
+   plt.title( figtitle, fontsize='8')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='max')
+   cbar.set_label('Kbar [m-1]',fontsize='8')
+   cbar.ax.tick_params(labelsize='8')
+   cbar.formatter.set_powerlimits((0, 0))
+
+   print ('Saving: [%s]' % figname)
+   plt.savefig(figname, dpi=500, bbox_inches='tight')
+   plt.close('all')
 

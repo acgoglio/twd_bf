@@ -249,7 +249,7 @@ if flag_save_bnbot :
    var = bnb[:]
    var_name     = outfield
    var_longname = 'Buoyancy frequency at the bottom'
-   var_details  = 'BVF computed at the bottom using data from 60 days of simulation without tides'
+   var_details  = 'BVF computed at the bottom using data from 1 year simulation without tides'
    var_units    = 's-1'
    # open a netCDF file to write
    outf = outfile
