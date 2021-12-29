@@ -10,7 +10,7 @@ set -e
 #set -x 
 ########################
 # Read ini file
-source run_twd.ini
+source /users_home/oda/ag15419/twd_bf/run_twd.ini
 
 # Define the vars
 SOURCE_DIR=$pwd
@@ -52,8 +52,8 @@ REP_SUBDIR2=${SOURCE_DIR}/${NAME_SUBDIR2}/
 echo "Other src are in: ${REP_SUBDIR2}"
 
 # Activate (=1 or 2 or 3 for single steps or all) or deactivate (=0) the production of the outfiles
-ROUGHNESS_FLAG=2
-BRUNTV_FLAG=0
+ROUGHNESS_FLAG=0
+BRUNTV_FLAG=2
 DIURNAL_FLAG=0
 
 ############################ ROUGHNESS HRMS and KBAR ###############################################
@@ -192,7 +192,7 @@ if [[ $BRUNTV_FLAG == 2 ]] || [[ $BRUNTV_FLAG == 'all' ]]; then
    echo "OUTPUT (bottom BV freq): ${bnbot_outfile}"
 
    # Script to run
-   SCRIPT_TO_RUN="BVbottom_plot.py"
+   SCRIPT_TO_RUN="BVbottom_plot_sd.py"
 
    # Set the bottom brunt vaisala job parameters
    JOUT=stdout_bot_%J
@@ -201,15 +201,15 @@ if [[ $BRUNTV_FLAG == 2 ]] || [[ $BRUNTV_FLAG == 'all' ]]; then
    JQUEUE="s_medium"
 
    # Submit the bottom brunt vaisala job
-   echo "Submitting the job: python ${REP_SUBDIR}/${SCRIPT_TO_RUN} $WORK_DIR $eas_bathy_meter $eas_mesh_mask ${INT_OUTFILE} $bvf_name ${bnbot_outfile} $bottom_bvf_name $eas_mbathy_name $eas_tmask_name $eas_lat_name $eas_lon_name $eas_bathymetry_name $order_bn $napp_bn $scheme_bn $interm_outfile $out_hrms_name $out_kbar_name"
+   echo "Submitting the job: python ${REP_SUBDIR2}/${SCRIPT_TO_RUN} $WORK_DIR $eas_bathy_meter $eas_mesh_mask ${INT_OUTFILE} $bvf_name ${bnbot_outfile} $bottom_bvf_name $eas_mbathy_name $eas_tmask_name $eas_lat_name $eas_lon_name $eas_bathymetry_name $order_bn $napp_bn $scheme_bn $interm_outfile $out_hrms_name $out_kbar_name $PERC_INFILE $amperc_field"
 
    bsub -K -J $JNAME -P $projectid -o $EXEC_DIR/$JOUT -e $EXEC_DIR/$JERR -q $JQUEUE \
-   "python ${REP_SUBDIR}/${SCRIPT_TO_RUN} $WORK_DIR $eas_bathy_meter $eas_mesh_mask ${INT_OUTFILE} $bvf_name ${bnbot_outfile} $bottom_bvf_name $eas_mbathy_name $eas_tmask_name $eas_lat_name $eas_lon_name $eas_bathymetry_name $order_bn $napp_bn $scheme_bn $interm_outfile $out_hrms_name $out_kbar_name"
+   "python ${REP_SUBDIR2}/${SCRIPT_TO_RUN} $WORK_DIR $eas_bathy_meter $eas_mesh_mask ${INT_OUTFILE} $bvf_name ${bnbot_outfile} $bottom_bvf_name $eas_mbathy_name $eas_tmask_name $eas_lat_name $eas_lon_name $eas_bathymetry_name $order_bn $napp_bn $scheme_bn $interm_outfile $out_hrms_name $out_kbar_name $amperc_outfile $amperc_field"
 
    echo "Done!"
 
    # Cp the outputs to the archive
-   cp $WORK_DIR/${bnbot_outfile} $OUT_DIR/
+   #cp $WORK_DIR/${bnbot_outfile} $OUT_DIR/
 
    
    # Clean the workdir

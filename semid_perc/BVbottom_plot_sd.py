@@ -43,6 +43,11 @@ hk_outfile=workdir+'/'+str(sys.argv[16]) # File storing hrms and kbar for the TW
 out_hrms_name=str(sys.argv[17]) # hrms field name in both outfile
 out_kbar_name=str(sys.argv[18]) # kbar field name in both outfile
 
+# Name of the semidiurnal tidal amplitude percentage input file 
+semid_file=str(sys.argv[19])
+# Name of the semidiurnal tidal amplitude percentage input field
+semid_field=str(sys.argv[20])
+
 # --- SET PARAMETERS
 
 # set FIGURE info
@@ -729,17 +734,6 @@ if flag_plot_shap :
 
    # --- PLOTDiff  TWD Coeff for diurnal-semidiurnal tidal component only for H>500m
 
-   # Open hk file path/name
-   nc2open=hk_outfile
-   print ('I am going to open and plot the following file: ',nc2open)
-   bathy_infield = Dataset(nc2open,'r')
-
-   hrms=bathy_infield.variables[out_hrms_name][:]
-   kbar=bathy_infield.variables[out_kbar_name][:]
-
-   bathy_infield.close()
-
-   #
    VAR = TWD_coeff_500_k1-TWD_coeff_500
    VARunit = 'm/s'
    VAR = np.ma.masked_invalid(VAR)
@@ -777,17 +771,6 @@ if flag_plot_shap :
    plt.close('all')
 
    # --- PLOTDiff  TWD Coeff for diurnal-semidiurnal tidal component only for H>500m LOG scale
-
-   # Open hk file path/name
-   nc2open=hk_outfile
-   print ('I am going to open and plot the following file: ',nc2open)
-   bathy_infield = Dataset(nc2open,'r')
-
-   hrms=bathy_infield.variables[out_hrms_name][:]
-   kbar=bathy_infield.variables[out_kbar_name][:]
-
-   bathy_infield.close()
-
    #
    VAR = TWD_coeff_500_k1-TWD_coeff_500
    VARunit = 'm/s'
@@ -824,6 +807,95 @@ if flag_plot_shap :
    print ('Saving: [%s]' % figname)
    plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
    plt.close('all')
+
+   # ---- PLOT the new Function for diurnal+semidiurnal tidal components
+   # Wheighted with amplitude percentages
+   # only for H>500m
+
+   # Read semidiurnal percentages
+   nc2open=workdir+semid_file
+   print ('Input file = ',nc2open)
+   semid_mod = NC.Dataset(nc2open,'r')
+   ST_perc=semid_mod.variables[semid_field][:]
+
+   # Define and mask the field to be plotted
+   SDandD_coeff=(TWD_coeff_500_k1)*((1.0-ST_perc)/100.0)-TWD_coeff_500*(ST_perc/100.0)
+   VAR = SDandD_coeff
+   VARunit = 'm/s'
+   VAR = np.ma.masked_invalid(VAR)
+   VAR=VAR*tmask[0,:,:]
+
+   k = 0
+   figname = figdir +'map_TWDcoeff_500_k1m2.png'
+   figtitle = 'TWD coeff (semidiurnal+diurnal tidal component)'
+   cmap        = cm.get_cmap('jet')
+   [cmin,cmax] = [0.00001,10.0]
+   print('... make the plot ...')
+   plt.figure()
+   plt.rcParams['lines.linewidth'] = 0.3
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
+   x, y = m(nav_lon, nav_lat)
+   #fig = m.pcolor(x,y,VAR,cmap=cmap,vmin=cmin,vmax=cmax) 
+   #lvls = np.logspace(-5,-1,5,endpoint=True) # 
+   #levels=[0,0.00000001,0.00000002,0.00000003,0.00000004,0.00000005]
+   #levels=[0,0.0000000001,0.0000000002,0.0000000003,0.0000000004,0.0000000005,0.0000000006,0.0000000007,0.0000000008,0.0000000009,0.000000001]
+   levels=[0.00001,0.0001,0.001,0.01,0.1,1.0,10.0]
+   fig=plt.contourf(x,y,VAR,levels=levels,cmap=cmap,norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max')
+   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max' ) 
+   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
+   pcf  = plt.contourf(x,y,bathy, levels=[0.000,500.0], colors='dimgray')
+   pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
+   plt.title( figtitle, fontsize='16')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='max')
+   cbar.set_label(VARunit,fontsize='14')
+   cbar.ax.tick_params(labelsize='12')
+ 
+   print ('Saving: [%s]' % figname)
+   plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
+   plt.close('all')
+
+   # --- PLOTDiff  NEW TWD Coeff for semidiurnal+diurnal tidal component -
+   # - OLD Coeff for semidiurnal tidal componentonly 
+   # only for H>500m
+
+   VAR = SDandD_coeff-TWD_coeff_500
+   VARunit = 'm/s'
+   VAR = np.ma.masked_invalid(VAR)
+   VAR=VAR*tmask[0,:,:]
+
+   k = 0
+   figname = figdir +'diff_TWDcoeff_500_M2K1-M2.png'
+   figtitle = 'Diff: TWD coeff diurnal+semidiurnal - TWD coeff semidiurnal'
+   cmap        = cm.get_cmap('bwr')
+   [cmin,cmax] = [0.00001,10.0]
+   print('... make the plot ...')
+   plt.figure()
+   plt.rcParams['lines.linewidth'] = 0.3
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
+   x, y = m(nav_lon, nav_lat)
+   #fig = m.pcolor(x,y,VAR,cmap=cmap,vmin=cmin,vmax=cmax) 
+   #lvls = np.logspace(-5,-1,5,endpoint=True) # 
+   #levels=[0,0.00000001,0.00000002,0.00000003,0.00000004,0.00000005]
+   #levels=[0,0.0000000001,0.0000000002,0.0000000003,0.0000000004,0.0000000005,0.0000000006,0.0000000007,0.0000000008,0.0000000009,0.000000001]
+   levels=[-4.5,-3.5,-2.5,-1.5,-0.5,0.5,1.5,2.5,3.5,4.5]
+   fig=plt.contourf(x,y,VAR,levels=levels,cmap=cmap,extend='both')
+   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max' ) 
+   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
+   pcf  = plt.contourf(x,y,bathy, levels=[0.000,500.0], colors='dimgray')
+   pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
+   plt.title( figtitle, fontsize='16')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='max')
+   cbar.set_label(VARunit,fontsize='14')
+   cbar.ax.tick_params(labelsize='12')
+
+   print ('Saving: [%s]' % figname)
+   plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
+   plt.close('all')
+
 #
 ## --- END
 #

@@ -484,7 +484,7 @@ if flag_outfield_plot :
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
    fig = m.pcolor(x,y,VAR, cmap=cmap, vmin=cmin, vmax=cmax)
-   #fig = m.contourf(x,y,VAR,cmap=cmap,vmin=cmin,vmax=cmax,extend='max')
+   #fig = plt.contourf(x,y,VAR,20,cmap=cmap,vmin=cmin,vmax=cmax)
    #fig = m.contourf(x,y,VAR, levels=[-9.0,-7.0,-5.0,-3.0,-1.0,1.0,3.0,5.0,7.0,9.0] ,cmap=cmap, extend='both') # levels=[-90,-70,-50,-30,-10,10,30,50,70,90]
    pcf  = plt.contourf(x,y,LAND, levels=[0.000,15.0], colors='dimgray')
    pc    = plt.contour(x,y,LAND, levels=[15.0], colors='black',linewidth=0.3)
