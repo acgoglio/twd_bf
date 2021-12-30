@@ -34,6 +34,7 @@ eas_tmask=str(sys.argv[9])         # eas tmask field name in the mesh mask file
 eas_lat=str(sys.argv[10])           # eas lat field name in the mesh mask file
 eas_lon=str(sys.argv[11])           # eas lon field name in the mesh mask file
 eas_Bathymetry=str(sys.argv[12])    # eas Bathymetry field name in the bathy file
+eas_gphif='gphif'
 
 order=int(sys.argv[13]) # Order of the Shapiro filter
 napp=int(sys.argv[14]) # Number of Shapiro filter applications
@@ -74,6 +75,7 @@ nav_lat = mesh.variables[eas_lat][:]   ; nav_lat = np.squeeze(nav_lat)        # 
 nav_lon = mesh.variables[eas_lon][:]   ; nav_lon = np.squeeze(nav_lon)        # X-axis
 mbathy  = mesh.variables[eas_mbathy][:]    ; mbathy  = np.squeeze(mbathy)
 tmask   = mesh.variables[eas_tmask][:]     ; tmask   = np.squeeze(tmask)
+gphif   = mesh.variables[eas_gphif][:]     ; gphif   = np.squeeze(gphif)
 mesh.close()
 [NZ,NY,NX] = tmask.shape
 
@@ -317,7 +319,6 @@ if flag_plot_shap :
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
-   k = 0
    figname = figdir +'map_bottomBV.png'
    figtitle = r'$N_{bottom}$'
    cmap        = cm.get_cmap('viridis')
@@ -330,9 +331,6 @@ if flag_plot_shap :
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
    fig = m.pcolor(x,y,VAR, cmap=cmap, norm=colors.LogNorm(vmin=cmin, vmax=cmax) ) # [0.00001,0.00005,0.0001,0.0005,0.001,0.005,0.01,0.05,0.1,0.5,1.0]
-   #lvls = np.logspace(-5,-1,5,endpoint=True) # levels=[0.0001,0.0005,0.001,0.005,0.01,0.05,0.1]
-   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='both' ) 
-   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3) 
    plt.title( figtitle, fontsize='16')
@@ -344,23 +342,72 @@ if flag_plot_shap :
    plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
    plt.close('all')
 
-   # --- PLOT M2 Weighting Function
-   f_cor = 2*7.2921*0.00001*np.sin(nav_lat) #0.0001 # s-1 Coriolis param
-   Omega = 1.405189*0.0001 # s-1 M2 angular frequency 
 
-   W_fun = np.sqrt((bnbot*bnbot-Omega*Omega)-(Omega*Omega-f_cor*f_cor))/(bnbot*Omega)
+   ################################
+
+   # OPEN FILES AND READ NEEDED FIELDS
+
+   # Open hk file path/name
+   nc2open=hk_outfile
+   print ('I am going to open and plot the following file: ',nc2open)
+   bathy_infield = Dataset(nc2open,'r')
+   hrms=bathy_infield.variables[out_hrms_name][:]
+   kbar=bathy_infield.variables[out_kbar_name][:]
+   bathy_infield.close()
+
+   # Read semidiurnal percentages
+   nc2open=workdir+'/'+semid_file
+   print ('Input file = ',nc2open)
+   semid_mod = Dataset(nc2open,'r')
+   ST_perc=semid_mod.variables[semid_field][:]
+
+   # DEFINE NEEDED PARAMATER
+   Omega = 1.405189*0.0001 # s-1 M2 angular frequency 
+   Omega_k1 = 7.292117*0.00001 # s-1 K1 angular frequency
+
+   f_cor = 2*7.2921*0.00001*np.sin(gphif*(2*np.pi)/360.)  # s-1 Coriolis param
+
+   # COMPIUTE THE VALUES TO BE PLOTTED
+   W_fun = np.where((bnbot*bnbot-Omega*Omega)*(Omega*Omega-f_cor*f_cor)>0,np.sqrt((bnbot*bnbot-Omega*Omega)*(Omega*Omega-f_cor*f_cor))/(Omega*bnbot),0)
+   W_fun_k1 = np.where((bnbot*bnbot-Omega_k1*Omega_k1)*(Omega_k1*Omega_k1-f_cor*f_cor)>0,np.sqrt((bnbot*bnbot-Omega_k1*Omega_k1)*(Omega_k1*Omega_k1-f_cor*f_cor))/(Omega_k1*bnbot),0)
+
+   sign_W_fun = np.sign((bnbot*bnbot-Omega*Omega)*(Omega*Omega-f_cor*f_cor))
+   sign1_W_fun = np.sign(bnbot*bnbot-Omega*Omega)
+   sign2_W_fun = np.sign(Omega*Omega-f_cor*f_cor)
+   sign_W_fun_k1 = np.sign((bnbot*bnbot-Omega_k1*Omega_k1)*(Omega_k1*Omega_k1-f_cor*f_cor))
+
+   TWD_coeff = 0.5*(hrms*hrms)*kbar*W_fun*bnbot
+   TWD_coeff_k1 = 0.5*(hrms*hrms)*kbar*W_fun_k1*bnbot
+
+   SDandD_W_fun=(W_fun*(ST_perc/100.0))+(W_fun_k1*((100.0-ST_perc)/100.0))
+
+   sign_W_fun_SDandD = np.sign(SDandD_W_fun) 
+
+   TWD_coeff_SDandD = 0.5*(hrms*hrms)*kbar*SDandD_W_fun*bnbot
+
+   # DEFINE THE LEVELS
+   W_fun_levels=[0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+
+   [cmin,cmax] = [0.0000001,0.01]
+   [cmin_diff,cmax_diff] = [0.00000001,0.001]
+
+   TWD_levels=[0.0000001,0.000001,0.00001,0.0001,0.001,0.01]
+   TWD_levels_diff=[0.00000001,0.0000001,0.000001,0.00001,0.0001,0.001]
+
+   TWD_diff_levels=[-0.9,-0.7,-0.5,-0.3,-0.1,0.1,0.3,0.5,0.7,0.9]
+   #[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0] #[-4.5,-3.5,-2.5,-1.5,-0.5,0.5,1.5,2.5,3.5,4.5]
+
+   ################################
+   # --- PLOT M2 Weighting Function
 
    VAR = W_fun
    VARunit = ''
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
-   k = 0
    figname = figdir +'map_weightingF.png'
    figtitle = 'Weighting Function (M2 tidal component)'
-   cmap        = cm.get_cmap('bone')
    cmap        = cm.get_cmap('jet')
-   [cmin,cmax] = [0.0,10000.0]
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
@@ -368,11 +415,8 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   #fig = m.pcolor(x,y,VAR, cmap=cmap) #, vmin=cmin, vmax=cmax )
-   #lvls = np.logspace(-5,-1,5,endpoint=True) # levels=[0.0001,0.0005,0.001,0.005,0.01,0.05,0.1]
-   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='both' ) 
-   fig = m.contourf(x,y,VAR,levels=[0,1000,2000,3000,4000,5000,6000,7000,8000],cmap=cmap,extend='max' ) 
-   #pc  = plt.contour(x,y,bathy, levels=[500], colors='dimgray')
+   fig = m.contourf(x,y,VAR,levels=W_fun_levels,cmap=cmap,extend='max') 
+   plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
@@ -385,22 +429,15 @@ if flag_plot_shap :
    plt.close('all')
 
    # --- PLOT K1 Weighting Function
-   f_cor = 2*7.2921*0.00001*np.sin(nav_lat) #0.0001 # s-1 Coriolis param
-   Omega_k1 = 7.292117*0.00001 # s-1 K1 angular frequency
-
-   W_fun_k1 = np.sqrt((bnbot*bnbot-Omega_k1*Omega_k1)-(Omega_k1*Omega_k1-f_cor*f_cor))/(bnbot*Omega_k1)
 
    VAR = W_fun_k1
    VARunit = ''
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
-   k = 0
    figname = figdir +'map_weightingF_k1.png'
    figtitle = 'Weighting Function (K1 tidal component)'
-   cmap        = cm.get_cmap('bone')
    cmap        = cm.get_cmap('jet')
-   [cmin,cmax] = [0.0,10000.0]
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
@@ -408,11 +445,8 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   #fig = m.pcolor(x,y,VAR, cmap=cmap) #, vmin=cmin, vmax=cmax )
-   #lvls = np.logspace(-5,-1,5,endpoint=True) # levels=[0.0001,0.0005,0.001,0.005,0.01,0.05,0.1]
-   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='both' ) 
-   fig = m.contourf(x,y,VAR,levels=[0,1000,2000,3000,4000,5000,6000,7000,8000],cmap=cmap,extend='max' )
-   #pc  = plt.contour(x,y,bathy, levels=[500], colors='dimgray')
+   fig = m.contourf(x,y,VAR,levels=W_fun_levels,cmap=cmap,extend='max')
+   plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
@@ -427,19 +461,14 @@ if flag_plot_shap :
 
    # --- PLOT Sign of the Weighting Function
 
-   sign_W_fun = np.sign((bnbot*bnbot-Omega*Omega)-(Omega*Omega-f_cor*f_cor))
-
    VAR = sign_W_fun
    VARunit = ''
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
-   k = 0
    figname = figdir +'map_sign_weightingF.png'
    figtitle = 'Sign of the Weighting Function (M2 tidal component)'
-   cmap        = cm.get_cmap('bone')
    cmap        = cm.get_cmap('jet')
-   [cmin,cmax] = [0.0,50000.0]
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
@@ -447,12 +476,7 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   #fig = m.pcolor(x,y,VAR, cmap=cmap) #, vmin=cmin, vmax=cmax )
-   #lvls = np.logspace(-5,-1,5,endpoint=True) # levels=[0.0001,0.0005,0.001,0.005,0.01,0.05,0.1]
-   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='both' ) 
-   #fig = m.contourf(x,y,VAR,levels=[-1.0,-0.0000000000000001,0.0000000000000001,1.0],cmap=cmap,extend='both' )
    fig = m.contourf(x,y,VAR,levels=[-1.0,0.0,1.0],cmap=cmap )
-   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
@@ -466,19 +490,14 @@ if flag_plot_shap :
 
    # --- PLOT Sign of the K1 Weighting Function
 
-   sign_W_fun_k1 = np.sign((bnbot*bnbot-Omega_k1*Omega_k1)-(Omega_k1*Omega_k1-f_cor*f_cor))
-
    VAR = sign_W_fun_k1
    VARunit = ''
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
-   k = 0
    figname = figdir +'map_sign_weightingF_k1.png'
    figtitle = 'Sign of the Weighting Function (K1 tidal component)'
-   cmap        = cm.get_cmap('bone')
    cmap        = cm.get_cmap('jet')
-   [cmin,cmax] = [0.0,50000.0]
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
@@ -486,12 +505,7 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   #fig = m.pcolor(x,y,VAR, cmap=cmap) #, vmin=cmin, vmax=cmax )
-   #lvls = np.logspace(-5,-1,5,endpoint=True) # levels=[0.0001,0.0005,0.001,0.005,0.01,0.05,0.1]
-   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='both' ) 
-   #fig = m.contourf(x,y,VAR,levels=[-1.0,-0.0000000000000001,0.0000000000000001,1.0],cmap=cmap,extend='both' )
    fig = m.contourf(x,y,VAR,levels=[-1.0,0.0,1.0],cmap=cmap )
-   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
@@ -505,32 +519,21 @@ if flag_plot_shap :
 
    # --- PLOT Sign 1 of the Weighting Function
 
-   sign1_W_fun = np.sign(bnbot*bnbot-Omega*Omega)
-
    VAR = sign1_W_fun
    VARunit = ''
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
-   k = 0
    figname = figdir +'map_sign_weightingF_bnbot-Omega.png'
    figtitle = 'Sign of bnbot*bnbot-Omega*Omega (M2 tidal component)'
-   cmap        = cm.get_cmap('bone')
    cmap        = cm.get_cmap('jet')
-   [cmin,cmax] = [0.0,50000.0]
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
    m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
-   x, y = m(nav_lon, nav_lat)
-   #fig = m.pcolor(x,y,VAR, cmap=cmap) #, vmin=cmin, vmax=cmax )
-   #lvls = np.logspace(-5,-1,5,endpoint=True) # levels=[0.0001,0.0005,0.001,0.005,0.01,0.05,0.1]
-   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='both' ) 
-   #fig = m.contourf(x,y,VAR,levels=[-1.0,-0.0000000000000001,0.0000000000000001,1.0],cmap=cmap,extend='both' )
    fig = m.contourf(x,y,VAR,levels=[-1.0,0.0,1.0],cmap=cmap )
-   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
@@ -544,19 +547,14 @@ if flag_plot_shap :
 
    # --- PLOT Sign 2 of the Weighting Function
 
-   sign2_W_fun = np.sign(Omega*Omega-f_cor*f_cor)
-
    VAR = sign2_W_fun
    VARunit = ''
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
-   k = 0
    figname = figdir +'map_sign_weightingF_Omega-f.png'
    figtitle = 'Sign of Omega*Omega-f_cor*f_cor (M2 tidal component)'
-   cmap        = cm.get_cmap('bone')
    cmap        = cm.get_cmap('jet')
-   [cmin,cmax] = [0.0,50000.0]
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
@@ -564,12 +562,7 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   #fig = m.pcolor(x,y,VAR, cmap=cmap) #, vmin=cmin, vmax=cmax )
-   #lvls = np.logspace(-5,-1,5,endpoint=True) # levels=[0.0001,0.0005,0.001,0.005,0.01,0.05,0.1]
-   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='both' ) 
-   #fig = m.contourf(x,y,VAR,levels=[-1.0,-0.0000000000000001,0.0000000000000001,1.0],cmap=cmap,extend='both' )
    fig = m.contourf(x,y,VAR,levels=[-1.0,0.0,1.0],cmap=cmap )
-   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
@@ -581,31 +574,18 @@ if flag_plot_shap :
    plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
    plt.close('all')
 
-   # --- PLOT TWD Coeff
+   ##############################################
 
-   # Open hk file path/name
-   nc2open=hk_outfile
-   print ('I am going to open and plot the following file: ',nc2open)
-   bathy_infield = Dataset(nc2open,'r')
-
-   hrms=bathy_infield.variables[out_hrms_name][:]
-   kbar=bathy_infield.variables[out_kbar_name][:]
-
-   bathy_infield.close()
-
+   # PLOT TWD semidiurnal coeff
    #
-   TWD_coeff = 0.5*bnbot*(hrms*hrms)*kbar*W_fun
    VAR = TWD_coeff
    VARunit = 'm/s'
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
-   k = 0
    figname = figdir +'map_TWDcoeff.png'
    figtitle = 'TWD coeff (M2 tidal component)'
    cmap        = cm.get_cmap('jet')
-   #[cmin,cmax] = [0.0,0.0000001]
-   [cmin,cmax] = [0.00001,10.0]
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
@@ -613,14 +593,8 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   #fig = m.pcolor(x,y,VAR,cmap=cmap,vmin=cmin,vmax=cmax) 
-   #lvls = np.logspace(-5,-1,5,endpoint=True) # 
-   #levels=[0,0.00000001,0.00000002,0.00000003,0.00000004,0.00000005,0.00000006,0.00000007,0.00000008,0.00000009,0.0000001]
-   #fig=plt.contourf(x,y,VAR,levels=levels,cmap=cmap,extend='max')
-   levels=[0.00001,0.0001,0.001,0.01,0.1,1.0,10.0]
-   fig=plt.contourf(x,y,VAR,levels=levels,cmap=cmap,norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max')
-   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max' ) 
-   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
+   fig=plt.contourf(x,y,VAR,levels=TWD_levels,cmap=cmap,norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max')
+   plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
@@ -633,29 +607,15 @@ if flag_plot_shap :
    plt.close('all')
 
    # --- PLOT TWD Coeff only for H>500m
-
-   # Open hk file path/name
-   nc2open=hk_outfile
-   print ('I am going to open and plot the following file: ',nc2open)
-   bathy_infield = Dataset(nc2open,'r')
-
-   hrms=bathy_infield.variables[out_hrms_name][:]
-   kbar=bathy_infield.variables[out_kbar_name][:]
-
-   bathy_infield.close()
-
    #
-   TWD_coeff_500 = 0.5*bnbot*(hrms*hrms)*kbar*W_fun
-   VAR = TWD_coeff_500
+   VAR = TWD_coeff
    VARunit = 'm/s'
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
-   k = 0
    figname = figdir +'map_TWDcoeff_500.png'
    figtitle = 'TWD coeff (M2 tidal component)'
    cmap        = cm.get_cmap('jet')
-   [cmin,cmax] = [0.00001,10.0]
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
@@ -663,14 +623,8 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   #fig = m.pcolor(x,y,VAR,cmap=cmap,vmin=cmin,vmax=cmax) 
-   #lvls = np.logspace(-5,-1,5,endpoint=True) # 
-   #levels=[0,0.00000001,0.00000002,0.00000003,0.00000004,0.00000005]
-   #levels=[0,0.0000000001,0.0000000002,0.0000000003,0.0000000004,0.0000000005,0.0000000006,0.0000000007,0.0000000008,0.0000000009,0.000000001]
-   levels=[0.00001,0.0001,0.001,0.01,0.1,1.0,10.0]
-   fig=plt.contourf(x,y,VAR,levels=levels,cmap=cmap,norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max')
-   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max' ) 
-   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
+   fig=plt.contourf(x,y,VAR,levels=TWD_levels,cmap=cmap,norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max')
+   plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,500.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
@@ -683,29 +637,15 @@ if flag_plot_shap :
    plt.close('all')
 
    # --- PLOT TWD Coeff for K1 tidal component only for H>500m
-
-   # Open hk file path/name
-   nc2open=hk_outfile
-   print ('I am going to open and plot the following file: ',nc2open)
-   bathy_infield = Dataset(nc2open,'r')
-
-   hrms=bathy_infield.variables[out_hrms_name][:]
-   kbar=bathy_infield.variables[out_kbar_name][:]
-
-   bathy_infield.close()
-
    #
-   TWD_coeff_500_k1 = 0.5*bnbot*(hrms*hrms)*kbar*W_fun_k1
-   VAR = TWD_coeff_500
+   VAR = TWD_coeff_k1
    VARunit = 'm/s'
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
-   k = 0
    figname = figdir +'map_TWDcoeff_500_k1.png'
    figtitle = 'TWD coeff (K1 tidal component)'
    cmap        = cm.get_cmap('jet')
-   [cmin,cmax] = [0.00001,10.0]
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
@@ -713,14 +653,8 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   #fig = m.pcolor(x,y,VAR,cmap=cmap,vmin=cmin,vmax=cmax) 
-   #lvls = np.logspace(-5,-1,5,endpoint=True) # 
-   #levels=[0,0.00000001,0.00000002,0.00000003,0.00000004,0.00000005]
-   #levels=[0,0.0000000001,0.0000000002,0.0000000003,0.0000000004,0.0000000005,0.0000000006,0.0000000007,0.0000000008,0.0000000009,0.000000001]
-   levels=[0.00001,0.0001,0.001,0.01,0.1,1.0,10.0]
-   fig=plt.contourf(x,y,VAR,levels=levels,cmap=cmap,norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max')
-   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max' ) 
-   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
+   fig=plt.contourf(x,y,VAR,levels=TWD_levels,cmap=cmap,norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max')
+   plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,500.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
@@ -733,17 +667,15 @@ if flag_plot_shap :
    plt.close('all')
 
    # --- PLOTDiff  TWD Coeff for diurnal-semidiurnal tidal component only for H>500m
-
-   VAR = TWD_coeff_500_k1-TWD_coeff_500
+   #
+   VAR = TWD_coeff_k1-TWD_coeff
    VARunit = 'm/s'
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
-   k = 0
    figname = figdir +'diff_TWDcoeff_500_M2-K1.png'
    figtitle = 'Diff: TWD coeff diurnal - TWD coeff semidiurnal'
    cmap        = cm.get_cmap('bwr')
-   [cmin,cmax] = [0.00001,10.0]
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
@@ -751,14 +683,7 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   #fig = m.pcolor(x,y,VAR,cmap=cmap,vmin=cmin,vmax=cmax) 
-   #lvls = np.logspace(-5,-1,5,endpoint=True) # 
-   #levels=[0,0.00000001,0.00000002,0.00000003,0.00000004,0.00000005]
-   #levels=[0,0.0000000001,0.0000000002,0.0000000003,0.0000000004,0.0000000005,0.0000000006,0.0000000007,0.0000000008,0.0000000009,0.000000001]
-   levels=[-4.5,-3.5,-2.5,-1.5,-0.5,0.5,1.5,2.5,3.5,4.5]
-   fig=plt.contourf(x,y,VAR,levels=levels,cmap=cmap,extend='both')
-   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max' ) 
-   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
+   fig=plt.contourf(x,y,VAR,levels=TWD_diff_levels,cmap=cmap,extend='both')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,500.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
@@ -772,16 +697,14 @@ if flag_plot_shap :
 
    # --- PLOTDiff  TWD Coeff for diurnal-semidiurnal tidal component only for H>500m LOG scale
    #
-   VAR = TWD_coeff_500_k1-TWD_coeff_500
+   VAR = TWD_coeff_k1-TWD_coeff
    VARunit = 'm/s'
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
-   k = 0
    figname = figdir +'difflog_TWDcoeff_500_M2-K1.png'
    figtitle = 'Diff: TWD coeff diurnal - TWD coeff semidiurnal'
    cmap        = cm.get_cmap('Reds')
-   [cmin,cmax] = [0.00001,10.0]
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
@@ -789,14 +712,8 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   #fig = m.pcolor(x,y,VAR,cmap=cmap,vmin=cmin,vmax=cmax) 
-   #lvls = np.logspace(-5,-1,5,endpoint=True) # 
-   #levels=[0,0.00000001,0.00000002,0.00000003,0.00000004,0.00000005]
-   #levels=[0,0.0000000001,0.0000000002,0.0000000003,0.0000000004,0.0000000005,0.0000000006,0.0000000007,0.0000000008,0.0000000009,0.000000001]
-   levels=[0.00001,0.0001,0.001,0.01,0.1,1.0,10.0]
-   fig=plt.contourf(x,y,VAR,levels=levels,cmap=cmap,norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max')
-   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max' ) 
-   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
+   fig=plt.contourf(x,y,VAR,levels=TWD_levels_diff,cmap=cmap,norm=colors.LogNorm(vmin=cmin_diff,vmax=cmax_diff),extend='max')
+   plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,500.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
@@ -808,28 +725,22 @@ if flag_plot_shap :
    plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
    plt.close('all')
 
+   ######### COMBINED SEMIDIURNAL + DIURNAL CONTRIBUTIONS ##############
+
    # ---- PLOT the new Function for diurnal+semidiurnal tidal components
    # Wheighted with amplitude percentages
    # only for H>500m
 
-   # Read semidiurnal percentages
-   nc2open=workdir+semid_file
-   print ('Input file = ',nc2open)
-   semid_mod = NC.Dataset(nc2open,'r')
-   ST_perc=semid_mod.variables[semid_field][:]
-
    # Define and mask the field to be plotted
-   SDandD_coeff=(TWD_coeff_500_k1)*((1.0-ST_perc)/100.0)-TWD_coeff_500*(ST_perc/100.0)
-   VAR = SDandD_coeff
+   VAR = SDandD_W_fun
    VARunit = 'm/s'
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
-   k = 0
-   figname = figdir +'map_TWDcoeff_500_k1m2.png'
-   figtitle = 'TWD coeff (semidiurnal+diurnal tidal component)'
+   figname = figdir +'map_weightingF_m2k1.png'
+   figtitle = 'Weighting Function (M2+K1 tidal components)'
+   cmap        = cm.get_cmap('bone')
    cmap        = cm.get_cmap('jet')
-   [cmin,cmax] = [0.00001,10.0]
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
@@ -837,14 +748,105 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   #fig = m.pcolor(x,y,VAR,cmap=cmap,vmin=cmin,vmax=cmax) 
-   #lvls = np.logspace(-5,-1,5,endpoint=True) # 
-   #levels=[0,0.00000001,0.00000002,0.00000003,0.00000004,0.00000005]
-   #levels=[0,0.0000000001,0.0000000002,0.0000000003,0.0000000004,0.0000000005,0.0000000006,0.0000000007,0.0000000008,0.0000000009,0.000000001]
-   levels=[0.00001,0.0001,0.001,0.01,0.1,1.0,10.0]
-   fig=plt.contourf(x,y,VAR,levels=levels,cmap=cmap,norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max')
-   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max' ) 
-   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
+   fig = m.contourf(x,y,VAR,levels=W_fun_levels,cmap=cmap,extend='max' )
+   plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
+   pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
+   pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
+   plt.title( figtitle, fontsize='16')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
+   cbar.set_label(VARunit,fontsize='14')
+   cbar.ax.tick_params(labelsize='12')
+
+   print ('Saving: [%s]' % figname)
+   plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
+   plt.close('all')
+
+   # ---- PLOT the DIFF between new Function for diurnal+semidiurnal tidal components
+   # Wheighted with amplitude percentages and old Function for semidiurnal tidal component
+   # only for H>500m
+
+   # Define and mask the field to be plotted
+   VAR =SDandD_W_fun-W_fun
+   VARunit = 'm/s'
+   VAR = np.ma.masked_invalid(VAR)
+   VAR=VAR*tmask[0,:,:]
+
+   figname = figdir +'diffmap_weightingF_m2k1-m2.png'
+   figtitle = 'Weighting Function M2+K1 - Weighting Function M2'
+   cmap        = cm.get_cmap('bwr')
+   print('... make the plot ...')
+   plt.figure()
+   plt.rcParams['lines.linewidth'] = 0.3
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
+   x, y = m(nav_lon, nav_lat)
+   fig = m.contourf(x,y,VAR,levels=TWD_diff_levels,cmap=cmap,extend='both' )
+   pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
+   pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
+   plt.title( figtitle, fontsize='16')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
+   cbar.set_label(VARunit,fontsize='14')
+   cbar.ax.tick_params(labelsize='12')
+
+   print ('Saving: [%s]' % figname)
+   plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
+   plt.close('all')
+
+
+   # --- PLOT Sign of the new Weighting Function for diurnal+semidiurnal tidal components
+   # Wheighted with amplitude percentages
+
+   VAR = sign_W_fun_SDandD
+   VARunit = ''
+   VAR = np.ma.masked_invalid(VAR)
+   VAR=VAR*tmask[0,:,:]
+
+   k = 0
+   figname = figdir +'map_sign_weightingF_m2k1.png'
+   figtitle = 'Sign of the Weighting Function (M2_K1 tidal components)'
+   cmap        = cm.get_cmap('jet')
+   print('... make the plot ...')
+   plt.figure()
+   plt.rcParams['lines.linewidth'] = 0.3
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
+   x, y = m(nav_lon, nav_lat)
+   fig = m.contourf(x,y,VAR,levels=[-1.0,0.0,1.0],cmap=cmap )
+   pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
+   pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
+   plt.title( figtitle, fontsize='16')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
+   cbar.set_label(VARunit,fontsize='14')
+   cbar.ax.tick_params(labelsize='12')
+
+   print ('Saving: [%s]' % figname)
+   plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
+   plt.close('all')
+
+
+   # ---- PLOT the new TWD coeff for diurnal+semidiurnal tidal components
+   # Wheighted with amplitude percentages
+   # only for H>500m
+
+   VAR = TWD_coeff_SDandD
+   VARunit = 'm/s'
+   VAR = np.ma.masked_invalid(VAR)
+   VAR=VAR*tmask[0,:,:]
+
+   figname = figdir +'map_TWDcoeff_500_k1m2.png'
+   figtitle = 'TWD coeff (semidiurnal+diurnal tidal component)'
+   cmap        = cm.get_cmap('jet')
+   print('... make the plot ...')
+   plt.figure()
+   plt.rcParams['lines.linewidth'] = 0.3
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
+   x, y = m(nav_lon, nav_lat)
+   fig=plt.contourf(x,y,VAR,levels=TWD_levels,cmap=cmap,norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='both')
+   plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,500.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
@@ -860,16 +862,14 @@ if flag_plot_shap :
    # - OLD Coeff for semidiurnal tidal componentonly 
    # only for H>500m
 
-   VAR = SDandD_coeff-TWD_coeff_500
+   VAR = TWD_coeff_SDandD-TWD_coeff
    VARunit = 'm/s'
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
-   k = 0
-   figname = figdir +'diff_TWDcoeff_500_M2K1-M2.png'
+   figname = figdir +'diffmap_TWDcoeff_500_k1m2.png'
    figtitle = 'Diff: TWD coeff diurnal+semidiurnal - TWD coeff semidiurnal'
    cmap        = cm.get_cmap('bwr')
-   [cmin,cmax] = [0.00001,10.0]
    print('... make the plot ...')
    plt.figure()
    plt.rcParams['lines.linewidth'] = 0.3
@@ -877,14 +877,37 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   #fig = m.pcolor(x,y,VAR,cmap=cmap,vmin=cmin,vmax=cmax) 
-   #lvls = np.logspace(-5,-1,5,endpoint=True) # 
-   #levels=[0,0.00000001,0.00000002,0.00000003,0.00000004,0.00000005]
-   #levels=[0,0.0000000001,0.0000000002,0.0000000003,0.0000000004,0.0000000005,0.0000000006,0.0000000007,0.0000000008,0.0000000009,0.000000001]
-   levels=[-4.5,-3.5,-2.5,-1.5,-0.5,0.5,1.5,2.5,3.5,4.5]
-   fig=plt.contourf(x,y,VAR,levels=levels,cmap=cmap,extend='both')
-   #fig = m.contourf(x,y,VAR,levels=lvls,cmap=cmap, norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max' ) 
-   #pc  = plt.contour(x,y,bathy, levels=[1000], colors='dimgray')
+   fig=plt.contourf(x,y,VAR,levels=TWD_diff_levels,cmap=cmap,extend='both')
+   pcf  = plt.contourf(x,y,bathy, levels=[0.000,500.0], colors='dimgray')
+   pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
+   plt.title( figtitle, fontsize='16')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
+   cbar.set_label(VARunit,fontsize='14')
+   cbar.ax.tick_params(labelsize='12')
+
+   print ('Saving: [%s]' % figname)
+   plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
+   plt.close('all')
+
+   # --- PLOTDiff  TWD Coeff for diurnal+semidiurnal - semidiurnal tidal component only for H>500m LOG scale
+   #
+   VAR = TWD_coeff-TWD_coeff_SDandD
+   VARunit = 'm/s'
+   VAR = np.ma.masked_invalid(VAR)
+   VAR=VAR*tmask[0,:,:]
+
+   figname = figdir +'difflog_TWDcoeff_M2-M2K1.png'
+   figtitle = 'Diff: TWD coeff semidiurnal - TWD coeff diurnal+semidiurnal'
+   cmap        = cm.get_cmap('Reds')
+   print('... make the plot ...')
+   plt.figure()
+   plt.rcParams['lines.linewidth'] = 0.3
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
+   x, y = m(nav_lon, nav_lat)
+   fig=plt.contourf(x,y,VAR,levels=TWD_levels_diff,cmap=cmap,norm=colors.LogNorm(vmin=cmin_diff,vmax=cmax_diff),extend='max')
+   plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,500.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
