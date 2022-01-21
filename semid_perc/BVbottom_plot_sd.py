@@ -367,6 +367,8 @@ if flag_plot_shap :
 
    f_cor = 2*7.2921*0.00001*np.sin(gphif*(2*np.pi)/360.)  # s-1 Coriolis param
 
+   print ('Coriolis max and min values in the domain:',np.max(f_cor),np.min(f_cor) )
+
    # COMPIUTE THE VALUES TO BE PLOTTED
    W_fun = np.where((bnbot*bnbot-Omega*Omega)*(Omega*Omega-f_cor*f_cor)>0,np.sqrt((bnbot*bnbot-Omega*Omega)*(Omega*Omega-f_cor*f_cor))/(Omega*bnbot),0)
    W_fun_k1 = np.where((bnbot*bnbot-Omega_k1*Omega_k1)*(Omega_k1*Omega_k1-f_cor*f_cor)>0,np.sqrt((bnbot*bnbot-Omega_k1*Omega_k1)*(Omega_k1*Omega_k1-f_cor*f_cor))/(Omega_k1*bnbot),0)
@@ -375,6 +377,8 @@ if flag_plot_shap :
    sign1_W_fun = np.sign(bnbot*bnbot-Omega*Omega)
    sign2_W_fun = np.sign(Omega*Omega-f_cor*f_cor)
    sign_W_fun_k1 = np.sign((bnbot*bnbot-Omega_k1*Omega_k1)*(Omega_k1*Omega_k1-f_cor*f_cor))
+   sign1_W_fun_k1 = np.sign(bnbot*bnbot-Omega_k1*Omega_k1)
+   sign2_W_fun_k1 = np.sign(Omega_k1*Omega_k1-f_cor*f_cor)
 
    TWD_coeff = 0.5*(hrms*hrms)*kbar*W_fun*bnbot
    TWD_coeff_k1 = 0.5*(hrms*hrms)*kbar*W_fun_k1*bnbot
@@ -387,15 +391,14 @@ if flag_plot_shap :
 
    # DEFINE THE LEVELS
    W_fun_levels=[0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1]
+   W_fun_diff_levels=[-0.9,-0.7,-0.5,-0.3,-0.1,0.1,0.3,0.5,0.7,0.9]
 
    [cmin,cmax] = [0.0000001,0.01]
    [cmin_diff,cmax_diff] = [0.00000001,0.001]
 
    TWD_levels=[0.0000001,0.000001,0.00001,0.0001,0.001,0.01]
-   TWD_levels_diff=[0.00000001,0.0000001,0.000001,0.00001,0.0001,0.001]
-
-   TWD_diff_levels=[-0.9,-0.7,-0.5,-0.3,-0.1,0.1,0.3,0.5,0.7,0.9]
-   #[-2.0,-1.8,-1.6,-1.4,-1.2,-1.0,-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8,1.0,1.2,1.4,1.6,1.8,2.0] #[-4.5,-3.5,-2.5,-1.5,-0.5,0.5,1.5,2.5,3.5,4.5]
+   TWD_levels_diff=[-0.0001,-0.000075,-0.000025,0.000025,0.000075,0.0001] #[-0.00045,-0.00035,-0.00025,-0.00015,-0.00005,0.00005,0.00015,0.00025,0.00035,0.00045]
+   TWD_levels_logdiff=[0.00000001,0.0000001,0.000001,0.00001,0.0001,0.001]
 
    ################################
    # --- PLOT M2 Weighting Function
@@ -415,12 +418,12 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   fig = m.contourf(x,y,VAR,levels=W_fun_levels,cmap=cmap,extend='max') 
+   fig = m.contourf(x,y,VAR,levels=W_fun_levels,cmap=cmap) 
    plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
-   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%')
    cbar.set_label(VARunit,fontsize='14')
    cbar.ax.tick_params(labelsize='12')
 
@@ -445,12 +448,12 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   fig = m.contourf(x,y,VAR,levels=W_fun_levels,cmap=cmap,extend='max')
+   fig = m.contourf(x,y,VAR,levels=W_fun_levels,cmap=cmap)
    plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
-   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%')
    cbar.set_label(VARunit,fontsize='14')
    cbar.ax.tick_params(labelsize='12')
 
@@ -467,7 +470,7 @@ if flag_plot_shap :
    VAR=VAR*tmask[0,:,:]
 
    figname = figdir +'map_sign_weightingF.png'
-   figtitle = 'Sign of the Weighting Function (M2 tidal component)'
+   figtitle = 'Weighting Function sign (M2 tidal component)'
    cmap        = cm.get_cmap('jet')
    print('... make the plot ...')
    plt.figure()
@@ -496,7 +499,7 @@ if flag_plot_shap :
    VAR=VAR*tmask[0,:,:]
 
    figname = figdir +'map_sign_weightingF_k1.png'
-   figtitle = 'Sign of the Weighting Function (K1 tidal component)'
+   figtitle = 'Weighting Function sign (K1 tidal component)'
    cmap        = cm.get_cmap('jet')
    print('... make the plot ...')
    plt.figure()
@@ -525,7 +528,7 @@ if flag_plot_shap :
    VAR=VAR*tmask[0,:,:]
 
    figname = figdir +'map_sign_weightingF_bnbot-Omega.png'
-   figtitle = 'Sign of bnbot*bnbot-Omega*Omega (M2 tidal component)'
+   figtitle = 'Sign (bnbot*bnbot-Omega_m2*Omega_m2)'
    cmap        = cm.get_cmap('jet')
    print('... make the plot ...')
    plt.figure()
@@ -553,7 +556,64 @@ if flag_plot_shap :
    VAR=VAR*tmask[0,:,:]
 
    figname = figdir +'map_sign_weightingF_Omega-f.png'
-   figtitle = 'Sign of Omega*Omega-f_cor*f_cor (M2 tidal component)'
+   figtitle = 'Sign (Omega_m2*Omega_m2-f_cor*f_cor)'
+   cmap        = cm.get_cmap('jet')
+   print('... make the plot ...')
+   plt.figure()
+   plt.rcParams['lines.linewidth'] = 0.3
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
+   x, y = m(nav_lon, nav_lat)
+   fig = m.contourf(x,y,VAR,levels=[-1.0,0.0,1.0],cmap=cmap )
+   pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
+   pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
+   plt.title( figtitle, fontsize='16')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
+   cbar.set_label(VARunit,fontsize='14')
+   cbar.ax.tick_params(labelsize='12')
+
+   print ('Saving: [%s]' % figname)
+   plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
+   plt.close('all')
+
+   # --- PLOT Sign 1 of the diurnal K1 Weighting Function 
+
+   VAR = sign1_W_fun_k1
+   VARunit = ''
+   VAR = np.ma.masked_invalid(VAR)
+   VAR=VAR*tmask[0,:,:]
+
+   figname = figdir +'map_sign_weightingF_bnbot-Omega_k1.png'
+   figtitle = 'Sign (bnbot*bnbot-Omega_k1*Omega_k1)'
+   cmap        = cm.get_cmap('jet')
+   print('... make the plot ...')
+   plt.figure()
+   plt.rcParams['lines.linewidth'] = 0.3
+   m = Basemap(projection='mill',llcrnrlat=lat_min,urcrnrlat=lat_max,llcrnrlon=lon_min,urcrnrlon=lon_max,resolution='i')
+   m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
+   m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
+   fig = m.contourf(x,y,VAR,levels=[-1.0,0.0,1.0],cmap=cmap )
+   pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
+   pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
+   plt.title( figtitle, fontsize='16')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
+   cbar.set_label(VARunit,fontsize='14')
+   cbar.ax.tick_params(labelsize='12')
+
+   print ('Saving: [%s]' % figname)
+   plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
+   plt.close('all')
+
+   # --- PLOT Sign 2 of the Diurnal K1 Weighting Function
+
+   VAR = sign2_W_fun_k1
+   VARunit = ''
+   VAR = np.ma.masked_invalid(VAR)
+   VAR=VAR*tmask[0,:,:]
+
+   figname = figdir +'map_sign_weightingF_Omega_k1.png'
+   figtitle = 'Sign (Omega_k1*Omega_k1-f_cor*f_cor)'
    cmap        = cm.get_cmap('jet')
    print('... make the plot ...')
    plt.figure()
@@ -593,12 +653,12 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   fig=plt.contourf(x,y,VAR,levels=TWD_levels,cmap=cmap,norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max')
+   fig=plt.contourf(x,y,VAR,levels=TWD_levels,cmap=cmap,norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='both')
    plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
-   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='max')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
    cbar.set_label(VARunit,fontsize='14')
    cbar.ax.tick_params(labelsize='12')
 
@@ -623,12 +683,12 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   fig=plt.contourf(x,y,VAR,levels=TWD_levels,cmap=cmap,norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max')
+   fig=plt.contourf(x,y,VAR,levels=TWD_levels,cmap=cmap,norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='both')
    plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,500.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
-   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='max')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
    cbar.set_label(VARunit,fontsize='14')
    cbar.ax.tick_params(labelsize='12')
 
@@ -653,12 +713,12 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   fig=plt.contourf(x,y,VAR,levels=TWD_levels,cmap=cmap,norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='max')
+   fig=plt.contourf(x,y,VAR,levels=TWD_levels,cmap=cmap,norm=colors.LogNorm(vmin=cmin,vmax=cmax),extend='both')
    plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,500.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
-   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='max')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
    cbar.set_label(VARunit,fontsize='14')
    cbar.ax.tick_params(labelsize='12')
 
@@ -683,13 +743,13 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   fig=plt.contourf(x,y,VAR,levels=TWD_diff_levels,cmap=cmap,extend='both')
+   fig=plt.contourf(x,y,VAR,levels=TWD_levels_diff,cmap=cmap,extend='both')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,500.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
-   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='max')
-   cbar.set_label(VARunit,fontsize='14')
-   cbar.ax.tick_params(labelsize='12')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
+   cbar.set_label(VARunit,fontsize='12')
+   cbar.ax.tick_params(labelsize='10')
 
    print ('Saving: [%s]' % figname)
    plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
@@ -712,7 +772,7 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   fig=plt.contourf(x,y,VAR,levels=TWD_levels_diff,cmap=cmap,norm=colors.LogNorm(vmin=cmin_diff,vmax=cmax_diff),extend='max')
+   fig=plt.contourf(x,y,VAR,levels=TWD_levels_logdiff,cmap=cmap,norm=colors.LogNorm(vmin=cmin_diff,vmax=cmax_diff),extend='max')
    plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,500.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
@@ -733,7 +793,7 @@ if flag_plot_shap :
 
    # Define and mask the field to be plotted
    VAR = SDandD_W_fun
-   VARunit = 'm/s'
+   VARunit = ' '
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
@@ -748,12 +808,12 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   fig = m.contourf(x,y,VAR,levels=W_fun_levels,cmap=cmap,extend='max' )
+   fig = m.contourf(x,y,VAR,levels=W_fun_levels,cmap=cmap)
    plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
-   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
+   cbar = m.colorbar(fig,'bottom', size='10%', pad='10%')
    cbar.set_label(VARunit,fontsize='14')
    cbar.ax.tick_params(labelsize='12')
 
@@ -767,7 +827,7 @@ if flag_plot_shap :
 
    # Define and mask the field to be plotted
    VAR =SDandD_W_fun-W_fun
-   VARunit = 'm/s'
+   VARunit = ' '
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
@@ -781,7 +841,7 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   fig = m.contourf(x,y,VAR,levels=TWD_diff_levels,cmap=cmap,extend='both' )
+   fig = m.contourf(x,y,VAR,levels=W_fun_diff_levels,cmap=cmap,extend='both' )
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,15.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
@@ -804,7 +864,7 @@ if flag_plot_shap :
 
    k = 0
    figname = figdir +'map_sign_weightingF_m2k1.png'
-   figtitle = 'Sign of the Weighting Function (M2_K1 tidal components)'
+   figtitle = 'Weighting Function sign (M2_K1 tidal components)'
    cmap        = cm.get_cmap('jet')
    print('... make the plot ...')
    plt.figure()
@@ -836,7 +896,7 @@ if flag_plot_shap :
    VAR=VAR*tmask[0,:,:]
 
    figname = figdir +'map_TWDcoeff_500_k1m2.png'
-   figtitle = 'TWD coeff (semidiurnal+diurnal tidal component)'
+   figtitle = 'TWD coeff (M2+K1 tidal component)'
    cmap        = cm.get_cmap('jet')
    print('... make the plot ...')
    plt.figure()
@@ -867,8 +927,8 @@ if flag_plot_shap :
    VAR = np.ma.masked_invalid(VAR)
    VAR=VAR*tmask[0,:,:]
 
-   figname = figdir +'diffmap_TWDcoeff_500_k1m2.png'
-   figtitle = 'Diff: TWD coeff diurnal+semidiurnal - TWD coeff semidiurnal'
+   figname = figdir +'diffmap_TWDcoeff_500_k1m2-m2.png'
+   figtitle = 'Diff: TWD coeff M2+K1 - TWD coeff M2'
    cmap        = cm.get_cmap('bwr')
    print('... make the plot ...')
    plt.figure()
@@ -877,13 +937,13 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   fig=plt.contourf(x,y,VAR,levels=TWD_diff_levels,cmap=cmap,extend='both')
+   fig=plt.contourf(x,y,VAR,levels=TWD_levels_diff,cmap=cmap,extend='both')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,500.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
    plt.title( figtitle, fontsize='16')
    cbar = m.colorbar(fig,'bottom', size='10%', pad='10%', extend='both')
-   cbar.set_label(VARunit,fontsize='14')
-   cbar.ax.tick_params(labelsize='12')
+   cbar.set_label(VARunit,fontsize='12')
+   cbar.ax.tick_params(labelsize='10')
 
    print ('Saving: [%s]' % figname)
    plt.savefig(figname, dpi=500, bbox_Nptshes='tight')
@@ -897,7 +957,7 @@ if flag_plot_shap :
    VAR=VAR*tmask[0,:,:]
 
    figname = figdir +'difflog_TWDcoeff_M2-M2K1.png'
-   figtitle = 'Diff: TWD coeff semidiurnal - TWD coeff diurnal+semidiurnal'
+   figtitle = 'Diff: TWD coeff M2 - TWD coeff M2+K1'
    cmap        = cm.get_cmap('Reds')
    print('... make the plot ...')
    plt.figure()
@@ -906,7 +966,7 @@ if flag_plot_shap :
    m.drawparallels(np.arange(30., 46., 5), labels=[1,0,0,0], fontsize=6,linewidth=0.3)
    m.drawmeridians(np.arange(-20., 40., 10), labels=[0,0,0,1], fontsize=6,linewidth=0.3)
    x, y = m(nav_lon, nav_lat)
-   fig=plt.contourf(x,y,VAR,levels=TWD_levels_diff,cmap=cmap,norm=colors.LogNorm(vmin=cmin_diff,vmax=cmax_diff),extend='max')
+   fig=plt.contourf(x,y,VAR,levels=TWD_levels_logdiff,cmap=cmap,norm=colors.LogNorm(vmin=cmin_diff,vmax=cmax_diff),extend='max')
    plt.contourf(x,y,VAR,levels=[-1000,0.0],colors='white')
    pcf  = plt.contourf(x,y,bathy, levels=[0.000,500.0], colors='dimgray')
    pc    = plt.contour(x,y,bathy, levels=[15.0,500], colors='black',linewidth=0.3)
