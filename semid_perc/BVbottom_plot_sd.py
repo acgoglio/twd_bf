@@ -31,10 +31,10 @@ outfield=str(sys.argv[7])   # Name of the bottom mean BV field in the ouput file
 
 eas_mbathy=str(sys.argv[8])        # eas mbathy field name in the mesh mask file
 eas_tmask=str(sys.argv[9])         # eas tmask field name in the mesh mask file
-eas_lat=str(sys.argv[10])           # eas lat field name in the mesh mask file
-eas_lon=str(sys.argv[11])           # eas lon field name in the mesh mask file
-eas_Bathymetry=str(sys.argv[12])    # eas Bathymetry field name in the bathy file
-eas_gphif='gphif'
+eas_lat=str(sys.argv[10])          # eas lat field name in the mesh mask file
+eas_lon=str(sys.argv[11])          # eas lon field name in the mesh mask file
+eas_Bathymetry=str(sys.argv[12])   # eas Bathymetry field name in the bathy file
+eas_gphif='gphif'                  # eas phy field name in the mesh mask file
 
 order=int(sys.argv[13]) # Order of the Shapiro filter
 napp=int(sys.argv[14]) # Number of Shapiro filter applications
@@ -58,8 +58,8 @@ if not(os.path.isdir(figdir)) :
    os.makedirs(figdir)
 
 # set FLAG
-flag_calc_bnbot = False
-flag_save_bnbot = False
+flag_calc_bnbot = True
+flag_save_bnbot = True
 flag_plot_shap   = True
 
 
