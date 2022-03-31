@@ -49,8 +49,8 @@ scheme_hk=int(sys.argv[16]) # type of boundary scheme to use ( only option 1 imp
 
 # --- SET PARAMETERS
 
-flag_compute_hk = False
-flag_eas_vars_save = False
+flag_compute_hk = True
+flag_eas_vars_save = True
 flag_outfield_plot = True
 
 # set FIGURE info
