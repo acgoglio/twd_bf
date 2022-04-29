@@ -52,8 +52,8 @@ REP_SUBDIR2=${SOURCE_DIR}/${NAME_SUBDIR2}/
 echo "Other src are in: ${REP_SUBDIR2}"
 
 # Activate (=1 or 2 or 3 for single steps or all) or deactivate (=0) the production of the outfiles
-ROUGHNESS_FLAG=0
-BRUNTV_FLAG=2
+ROUGHNESS_FLAG='all'
+BRUNTV_FLAG='all'
 DIURNAL_FLAG=0
 
 ############################ ROUGHNESS HRMS and KBAR ###############################################
