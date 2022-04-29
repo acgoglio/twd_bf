@@ -34,6 +34,7 @@ eas_tmask=str(sys.argv[9])         # eas tmask field name in the mesh mask file
 eas_lat=str(sys.argv[10])           # eas lat field name in the mesh mask file
 eas_lon=str(sys.argv[11])           # eas lon field name in the mesh mask file
 eas_Bathymetry=str(sys.argv[12])    # eas Bathymetry field name in the bathy file
+eas_gphif='gphif'                  # eas phy field name in the mesh mask file
 
 order=int(sys.argv[13]) # Order of the Shapiro filter
 napp=int(sys.argv[14]) # Number of Shapiro filter applications
@@ -69,6 +70,7 @@ nav_lat = mesh.variables[eas_lat][:]   ; nav_lat = np.squeeze(nav_lat)        # 
 nav_lon = mesh.variables[eas_lon][:]   ; nav_lon = np.squeeze(nav_lon)        # X-axis
 mbathy  = mesh.variables[eas_mbathy][:]    ; mbathy  = np.squeeze(mbathy)
 tmask   = mesh.variables[eas_tmask][:]     ; tmask   = np.squeeze(tmask)
+gphif   = mesh.variables[eas_gphif][:]     ; gphif   = np.squeeze(gphif)
 mesh.close()
 [NZ,NY,NX] = tmask.shape
 

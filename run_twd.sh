@@ -174,7 +174,7 @@ if [[ $BRUNTV_FLAG == 1 ]] || [[ $BRUNTV_FLAG == 'all' ]]; then
    JQUEUE="s_medium"
 
    # Submit the brunt vaisala job
-I   echo "Submitting the job: sh ${REP_SUBDIR}/${SCRIPT_TO_RUN} $WORK_DIR $nontidal_exp_path $nontidal_exp_name $sq_bvf_name $bvf_name ${INT_OUTFILE}"
+   echo "Submitting the job: sh ${REP_SUBDIR}/${SCRIPT_TO_RUN} $WORK_DIR $nontidal_exp_path $nontidal_exp_name $sq_bvf_name $bvf_name ${INT_OUTFILE}"
 
    bsub -K -J $JNAME -P $projectid -o $EXEC_DIR/$JOUT -e $EXEC_DIR/$JERR -q $JQUEUE \
    "sh ${REP_SUBDIR}/${SCRIPT_TO_RUN} $WORK_DIR $nontidal_exp_path $nontidal_exp_name $sq_bvf_name $bvf_name ${INT_OUTFILE}"
@@ -209,7 +209,7 @@ if [[ $BRUNTV_FLAG == 2 ]] || [[ $BRUNTV_FLAG == 'all' ]]; then
    echo "Done!"
 
    # Cp the outputs to the archive
-   #cp $WORK_DIR/${bnbot_outfile} $OUT_DIR/
+   cp $WORK_DIR/${bnbot_outfile} $OUT_DIR/
 
    
    # Clean the workdir
